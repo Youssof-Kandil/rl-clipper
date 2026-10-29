@@ -147,17 +147,20 @@ def test_youtube_quota_message(tmp_path):
 # ---------------------------------------------------------------- TikTok
 
 @pytest.mark.parametrize("size,expected", [
-    (3 * 2**20, (3 * 2**20, 1)),            # under 5 MB: one piece
-    (15 * 2**20, (10 * 2**20, 1)),          # remainder goes into the last chunk
-    (25 * 2**20, (10 * 2**20, 2)),
-    (100 * 2**20, (10 * 2**20, 10)),
+    (3 * 2**20, (3 * 2**20, 1)),            # small: one piece
+    (15 * 2**20, (15 * 2**20, 1)),          # up to 64 MB: one piece sized to the file (TikTok rejects 10 MB x 1)
+    (64 * 2**20, (64 * 2**20, 1)),
+    (100 * 2**20, (10 * 2**20, 10)),        # bigger: 10 MB chunks, the last takes the remainder
+    (105 * 2**20, (10 * 2**20, 10)),
 ])
 def test_tiktok_chunk_plan(size, expected):
     assert tiktok.chunk_plan(size) == expected
 
 
 def test_tiktok_inbox_upload(tmp_path, monkeypatch):
+    # Shrink the limits so a 12 MB test file is split like a >64 MB one would be.
     monkeypatch.setattr(tiktok, "CHUNK", 5 * 2**20)
+    monkeypatch.setattr(tiktok, "MAX_CHUNK", 8 * 2**20)
     size = 12 * 2**20
     f = tmp_path / "clip.mp4"
     f.write_bytes(b"x" * size)

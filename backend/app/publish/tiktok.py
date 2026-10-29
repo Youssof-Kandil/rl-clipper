@@ -38,12 +38,13 @@ _ERRORS = {
 
 
 def chunk_plan(size: int, chunk: int | None = None) -> tuple[int, int]:
-    """(chunk_size, total_chunk_count) by TikTok's rules: chunks 5-64 MB, files under
-    5 MB go in one piece, and the last chunk takes the remainder (it may be bigger)."""
-    if size < MIN_CHUNK:
+    """(chunk_size, total_chunk_count) by TikTok's rules: a file up to 64 MB goes in one
+    piece whose chunk_size is the whole file (TikTok rejects e.g. "10 MB x 1" for a
+    15 MB file); bigger files go in 5-64 MB chunks, the last one taking the remainder."""
+    if size <= MAX_CHUNK:
         return size, 1
-    chunk = min(max(chunk or CHUNK, MIN_CHUNK), MAX_CHUNK, size)
-    return chunk, max(size // chunk, 1)
+    chunk = min(max(chunk or CHUNK, MIN_CHUNK), MAX_CHUNK)
+    return chunk, size // chunk
 
 
 def _check(r: httpx.Response) -> dict:
