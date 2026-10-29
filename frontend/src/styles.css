@@ -263,6 +263,7 @@ label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--t
 .cue-nudge { display: inline-flex; }
 .cue-nudge button { padding: 2px 4px; }
 .seq-caption-look .row { margin-top: 8px; }
+.model-line { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-size: 12px; }
 .swatch-input { width: 34px; height: 26px; padding: 0 2px; border: 1px solid var(--line); border-radius: 6px; background: transparent; cursor: pointer; }
 .seq-caption-look p { margin: 8px 0 0; font-size: 12px; }
 .seq-add-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 220px; overflow: auto; font-size: 13px; }

@@ -187,6 +187,7 @@ export default function SettingsDialog({ projectId, time, settings, onClose, onS
                   <option value="medium.en">medium.en (best, ~1.5 GB, slow on CPU)</option>
                 </select>
               </label>
+              <span className="hint">Downloaded automatically the first time you transcribe with it.</span>
               <label>
                 Text size
                 <input type="number" min={40} max={140} step={2} value={num("caption_size")} onChange={(e) => set("caption_size", Number(e.target.value))} />

@@ -215,7 +215,7 @@ export const api = {
     call<Job>("POST", `/api/projects/${id}/sequences/${kind}/export`, { mode }),
   saveCaptions: (id: string, captions: Cue[]) => call<Cue[]>("PUT", `/api/projects/${id}/captions`, { captions }),
   transcribe: (id: string, itemIds?: string[]) => call<Job>("POST", `/api/projects/${id}/captions/transcribe`, { item_ids: itemIds }),
-  captionStatus: () => call<{ model: string; ready: boolean; device: string | null }>("GET", "/api/captions/status"),
+  captionStatus: () => call<{ model: string; ready: boolean; size: string; device: string | null }>("GET", "/api/captions/status"),
   downloadCaptionModel: () => call<Job>("POST", "/api/captions/model"),
   job: (jobId: string) => call<Job>("GET", `/api/jobs/${jobId}`),
   settings: () => call<Settings>("GET", "/api/settings"),

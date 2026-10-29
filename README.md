@@ -176,8 +176,8 @@ A different folder can be set in Settings. Matches without a saved replay still 
    - **TikTok only:** pick the 9:16 style and crop position per clip in the clip panel.
    - **Preview:** press **Play** to watch the whole video, cut to cut.
 5. **Captions (TikTok).**
-   - The first time, click **Download speech model** (about 480 MB).
-   - Then use **Transcribe all clips**, or **Transcribe this clip** for a single clip.
+   - Use **Transcribe all clips**, or **Transcribe this clip** for a single clip.
+   - The first time you use a speech model it downloads automatically: base.en ~150 MB, small.en ~480 MB (default), medium.en ~1.5 GB. Models are too large to ship in the repository; they're saved in `data/models`. **Caption look** shows which model is selected and has a **Download now** button to fetch it ahead of time.
    - Edit any line's text and timing in the clip panel.
    - Look (size, position, ALL CAPS, highlight colour) is under **Caption look**.
 6. **Export:** **Export as one video** or **Export separate clips**.

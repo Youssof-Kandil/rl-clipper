@@ -274,8 +274,6 @@ def start_transcribe(pid: str, item_ids: list[str] | None) -> jobs.Job:
     project = _project(pid)
     settings = load_settings()
     model = str(settings["caption_model"])
-    if not captions.model_ready(model):
-        raise HTTPException(400, "The caption model isn't downloaded yet")
     if project["info"]["audio_streams"] == 0:
         raise HTTPException(400, "This recording has no audio")
     items = sequences.get(project, "tiktok")["items"]
@@ -287,6 +285,10 @@ def start_transcribe(pid: str, item_ids: list[str] | None) -> jobs.Job:
     track = min(int(settings["mic_track"]), project["info"]["audio_streams"] - 1)
 
     def work(job: jobs.Job) -> dict:
+        if not captions.model_ready(model):
+            # First use of this model: fetch it as part of the job instead of failing.
+            job.update(0.0, f"Downloading the {model} speech model ({captions.MODEL_SIZES.get(model, 'large')}, once)")
+            captions.download_model(model)
         cues = captions.transcribe(project["source"], ranges, track, model, job.update, lambda: job.cancelled,
                                    max(int(settings["caption_max_words"]), 1))
         out: dict = {}
@@ -684,7 +686,8 @@ def transcribe_captions(pid: str, body: TranscribeIn) -> dict:
 @app.get("/api/captions/status")
 def caption_status() -> dict:
     model = str(load_settings()["caption_model"])
-    return {"model": model, "ready": captions.model_ready(model), "device": captions.device_in_use()}
+    return {"model": model, "ready": captions.model_ready(model), "size": captions.MODEL_SIZES.get(model, ""),
+            "device": captions.device_in_use()}
 
 
 @app.post("/api/captions/model")

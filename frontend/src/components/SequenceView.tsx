@@ -65,7 +65,7 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
   const selected = items.find((i) => i.id === selectedId) ?? null;
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [modelReady, setModelReady] = useState<boolean | null>(null);
+  const [model, setModel] = useState<{ model: string; ready: boolean; size: string } | null>(null);
   const [modelJob, setModelJob] = useState<string | null>(null);
 
   const pre = Number(settings.pre_seconds ?? 10);
@@ -220,16 +220,25 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
   };
 
   // ---------------------------------------------------------------- captions
+  // Re-check when the chosen model changes (Settings) and after a transcription, which
+  // downloads a missing model itself.
+  const transcribeStatus = project.job_status.transcribe?.status;
+  const loadModelStatus = () =>
+    api
+      .captionStatus()
+      .then(setModel)
+      .catch(() => setModel(null));
   useEffect(() => {
-    if (tiktok || showCaptions) api.captionStatus().then((s) => setModelReady(s.ready)).catch(() => setModelReady(false));
-  }, [tiktok, showCaptions]);
+    if (tiktok || showCaptions) loadModelStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiktok, showCaptions, settings.caption_model, transcribeStatus]);
 
   useEffect(() => {
     if (!modelJob) return;
     const t = setInterval(async () => {
       const job = await api.job(modelJob);
       if (job.status === "done") {
-        setModelReady(true);
+        loadModelStatus();
         setModelJob(null);
       } else if (job.status === "error" || job.status === "cancelled") {
         onError(job.error || "Model download failed");
@@ -458,7 +467,7 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
                       >
                         + Line at playhead
                       </button>
-                      <button className="small" onClick={() => transcribe([selected.id])} disabled={!modelReady || !!transcribing}>
+                      <button className="small" onClick={() => transcribe([selected.id])} disabled={!!transcribing}>
                         Transcribe this clip
                       </button>
                     </div>
@@ -498,27 +507,37 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
             <section className="card seq-caption-look">
               <div className="row spread">
                 <h3>Caption look</h3>
-                {modelReady === false && !modelJob && (
-                  <button
-                    className="small"
-                    onClick={async () => {
-                      try {
-                        setModelJob((await api.downloadCaptionModel()).id);
-                      } catch (e) {
-                        onError(String((e as Error).message));
-                      }
-                    }}
-                  >
-                    Download speech model (~480 MB)
-                  </button>
-                )}
-                {modelJob && <span className="muted">Downloading speech model…</span>}
-                {modelReady && (
-                  <button className="small" onClick={() => transcribe()} disabled={!items.length || !!transcribing}>
-                    Transcribe all clips
-                  </button>
-                )}
+                <button className="small" onClick={() => transcribe()} disabled={!items.length || !!transcribing}>
+                  Transcribe all clips
+                </button>
               </div>
+              {model && (
+                <div className="model-line">
+                  <span className="muted">Speech model</span>
+                  <b>{model.model}</b>
+                  {model.ready ? (
+                    <span className="muted">downloaded</span>
+                  ) : modelJob ? (
+                    <span className="muted">downloading {model.size}…</span>
+                  ) : (
+                    <>
+                      <span className="muted">not downloaded yet ({model.size}); transcribing downloads it first</span>
+                      <button
+                        className="ghost small"
+                        onClick={async () => {
+                          try {
+                            setModelJob((await api.downloadCaptionModel()).id);
+                          } catch (e) {
+                            onError(String((e as Error).message));
+                          }
+                        }}
+                      >
+                        Download now
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
               <div className="row">
                 <label>
                   Size

@@ -21,6 +21,8 @@ from . import media
 from .config import DATA_DIR
 
 MODELS_DIR = DATA_DIR / "models"
+# Download sizes, shown before fetching (the models are too big to ship in the repo).
+MODEL_SIZES = {"base.en": "~150 MB", "small.en": "~480 MB", "medium.en": "~1.5 GB"}
 # A caption is a sentence (or part of a long one): up to MAX_WORDS words (about two
 # lines on screen), split at sentence ends and at pauses.
 MAX_WORDS = 8
@@ -218,12 +220,18 @@ def model_ready(name: str) -> bool:
     return (model_path(name) / "model.bin").is_file()
 
 
+_download_lock = threading.Lock()
+
+
 def download_model(name: str) -> Path:
+    """Fetch a Whisper model into data/models (once; a second caller waits for the first)."""
     from faster_whisper import download_model as fw_download
 
     target = model_path(name)
-    target.mkdir(parents=True, exist_ok=True)
-    fw_download(name, output_dir=str(target))
+    with _download_lock:
+        if not model_ready(name):
+            target.mkdir(parents=True, exist_ok=True)
+            fw_download(name, output_dir=str(target))
     return target
 
 

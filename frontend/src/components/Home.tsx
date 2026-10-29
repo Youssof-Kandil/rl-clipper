@@ -204,7 +204,7 @@ function SystemCheck({ health }: { health: Health }) {
     {
       ok: !!health.caption_model_ready,
       label: "Speech model",
-      detail: health.caption_model_ready ? "downloaded" : "downloads from the TikTok tab the first time (~480 MB)",
+      detail: health.caption_model_ready ? "downloaded" : "downloads automatically the first time you transcribe",
     },
     {
       ok: !!health.rrrocket,
