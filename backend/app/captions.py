@@ -22,14 +22,23 @@ from .config import DATA_DIR
 
 MODELS_DIR = DATA_DIR / "models"
 # Download sizes, shown before fetching (the models are too big to ship in the repo).
-MODEL_SIZES = {"base.en": "~150 MB", "small.en": "~480 MB", "medium.en": "~1.5 GB"}
+MODEL_SIZES = {"base.en": "~150 MB", "small.en": "~480 MB", "medium.en": "~1.5 GB",
+               "distil-large-v3.5": "~1.5 GB", "large-v3-turbo": "~1.6 GB", "large-v3": "~3 GB"}
 # A caption is a sentence (or part of a long one): up to MAX_WORDS words (about two
 # lines on screen), split at sentence ends and at pauses.
 MAX_WORDS = 8
 MAX_LINE_SECONDS = 3.5
 PAUSE_BREAK = 0.6
-# Extra audio either side of a clip so words cut at the edges still get heard.
-_PAD = 0.5
+# Extra audio around a clip: a few seconds before give the model the start of the
+# sentence (only words inside the clip are kept); a little after catches cut-off words.
+_PAD_BEFORE = 3.0
+_PAD_AFTER = 1.0
+# Whisper continues from its prompt: written in punctuated sentences, it nudges the
+# model to punctuate (captions split at sentence ends), and it spells Rocket League
+# terms the way players write them.
+PROMPT = ("Rocket League gameplay commentary. What a save! Nice shot, that was a flip reset into a musty flick. "
+          "Ceiling shot, air dribble, double tap, demo, boost, kickoff, overtime, backboard, half-flip, "
+          "wavedash, speed flip, pinch, bump, rotation.")
 
 Word = tuple[float, float, str]  # (start, end, text) in source-video seconds
 Progress = Callable[[float, str], None]
@@ -317,7 +326,7 @@ def _audio(src: str, start: float, end: float, track: int) -> np.ndarray:
 
 def transcribe(src: str, ranges: list[tuple[float, float]], track: int, model: str,
                progress: Progress | None = None, cancelled: Callable[[], bool] = lambda: False,
-               max_words: int = MAX_WORDS) -> list[dict]:
+               max_words: int = MAX_WORDS, prompt: bool = True) -> list[dict]:
     """Caption cues (source-video time) for what's said on ``track`` inside ``ranges``."""
     device, whisper = _whisper(model)
     cues: list[dict] = []
@@ -326,12 +335,13 @@ def transcribe(src: str, ranges: list[tuple[float, float]], track: int, model: s
             raise InterruptedError("Cancelled")
         if progress:
             progress(i / len(ranges), f"Transcribing clip {i + 1}/{len(ranges)} ({device.upper()})")
-        start = max(a - _PAD, 0.0)
-        audio = _audio(src, start, b + _PAD, track)
+        start = max(a - _PAD_BEFORE, 0.0)
+        audio = _audio(src, start, b + _PAD_AFTER, track)
         if audio.size < 1600:
             continue
         segments, _ = whisper.transcribe(audio, language="en", word_timestamps=True, vad_filter=True,
-                                         beam_size=5, condition_on_previous_text=False)
+                                         beam_size=5, condition_on_previous_text=False,
+                                         initial_prompt=PROMPT if prompt else None)
         words = [(start + w.start, start + w.end, w.word) for s in segments for w in (s.words or [])]
         # Only keep words spoken inside the clip itself.
         words = [w for w in words if w[1] > a and w[0] < b]

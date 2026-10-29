@@ -177,7 +177,7 @@ A different folder can be set in Settings. Matches without a saved replay still 
    - **Preview:** press **Play** to watch the whole video, cut to cut.
 5. **Captions (TikTok).**
    - Use **Transcribe all clips**, or **Transcribe this clip** for a single clip.
-   - The first time you use a speech model it downloads automatically: base.en ~150 MB, small.en ~480 MB (default), medium.en ~1.5 GB. Models are too large to ship in the repository; they're saved in `data/models`. **Caption look** shows which model is selected and has a **Download now** button to fetch it ahead of time.
+   - The first time you use a speech model it downloads automatically: base.en ~150 MB, small.en ~480 MB (default), medium.en ~1.5 GB, distil-large-v3.5 ~1.5 GB, large-v3-turbo ~1.6 GB, large-v3 ~3 GB. The large ones are the most accurate and want an NVIDIA GPU. Models are too large to ship in the repository; they're saved in `data/models`. **Caption look** shows which model is selected and has a **Download now** button to fetch it ahead of time.
    - Edit any line's text and timing in the clip panel.
    - Look (size, position, ALL CAPS, highlight colour) is under **Caption look**.
 6. **Export:** **Export as one video** or **Export separate clips**.
@@ -273,7 +273,7 @@ Open **Settings** on a project. Everything is saved in `data/settings.json`.
 | Export | Blur, sharp area, zoom | 30 / 0.55 / 1.0 | The look of the 9:16 styles. |
 | Export | Export size | Balanced | Best ≈ 4 MB/s · Balanced ≈ 3 MB/s · Small (HEVC) ≈ 2 MB/s of 9:16 video. |
 | Export | Video encoder | Auto | Auto (NVENC if it works) / NVENC / CPU. |
-| Captions | Speech model | small.en | base.en (fast) · small.en · medium.en (most accurate, best on GPU). |
+| Captions | Speech model | small.en | base.en (fastest) · small.en · medium.en · distil-large-v3.5 · large-v3-turbo · large-v3 (most accurate). The large models want an NVIDIA GPU. |
 | Captions | Size, position, ALL CAPS | 78 / lower / off | Caption look. |
 | Captions | Highlight + colour | on, #2EA8FF | Colour the word being said. |
 | Captions | Max words per caption | 8 | Used by the next transcription. |

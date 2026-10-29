@@ -182,9 +182,12 @@ export default function SettingsDialog({ projectId, time, settings, onClose, onS
               <label>
                 Speech model
                 <select value={String(draft.caption_model)} onChange={(e) => set("caption_model", e.target.value)}>
-                  <option value="base.en">base.en (fast, ~150 MB)</option>
-                  <option value="small.en">small.en (recommended, ~480 MB)</option>
-                  <option value="medium.en">medium.en (best, ~1.5 GB, slow on CPU)</option>
+                  <option value="base.en">base.en (fastest, least accurate, ~150 MB)</option>
+                  <option value="small.en">small.en (good, fine on CPU, ~480 MB)</option>
+                  <option value="medium.en">medium.en (better, ~1.5 GB, slow on CPU)</option>
+                  <option value="distil-large-v3.5">distil-large-v3.5 (large-model accuracy, fast, ~1.5 GB)</option>
+                  <option value="large-v3-turbo">large-v3-turbo (near-best, fast on GPU, ~1.6 GB)</option>
+                  <option value="large-v3">large-v3 (most accurate, GPU recommended, ~3 GB)</option>
                 </select>
               </label>
               <span className="hint">Downloaded automatically the first time you transcribe with it.</span>
