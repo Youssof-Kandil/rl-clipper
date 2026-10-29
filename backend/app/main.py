@@ -748,9 +748,10 @@ def auth_done(platform: str, name: str = "", error: str = "") -> HTMLResponse:
         title, body = f"{label} connected", (f"Signed in as <b>{html.escape(name)}</b>. " if name else "") + \
             "You can close this tab and go back to RL Clipper."
     return HTMLResponse(
-        f"<!doctype html><meta charset=utf-8><title>{title}</title>"
+        f"<!doctype html><meta charset=utf-8><title>{title}</title><link rel=icon href=/favicon.svg>"
         "<body style='font:16px system-ui;background:#0d1117;color:#e6ebf2;display:grid;place-items:center;"
-        f"height:100vh;margin:0'><div style='max-width:520px;text-align:center'><h2>{title}</h2><p>{body}</p></div>")
+        "height:100vh;margin:0'><div style='max-width:520px;text-align:center'>"
+        f"<img src=/favicon.svg width=72 height=72 alt=''><h2>{title}</h2><p>{body}</p></div>")
 
 
 @app.delete("/api/accounts/{platform}")

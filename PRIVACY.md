@@ -1,3 +1,5 @@
+<img src="docs/assets/icon-1024.png" width="72" height="72" alt="RL Clipper icon">
+
 # Privacy Policy
 
 *Last updated: 29 October 2026*

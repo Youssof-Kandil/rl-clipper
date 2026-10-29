@@ -1,3 +1,5 @@
+<img src="docs/assets/icon-1024.png" width="72" height="72" alt="RL Clipper icon">
+
 # Contributing to RL Clipper
 
 Thanks for helping! RL Clipper is created and maintained by **[Youssof Kandil (@Youssof-Kandil)](https://github.com/Youssof-Kandil)**. Bug reports, ideas and pull requests are all welcome.

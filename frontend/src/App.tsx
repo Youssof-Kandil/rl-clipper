@@ -47,7 +47,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <button className="brand" onClick={() => open(null)}>
-          <span className="brand-ball" /> RL Clipper
+          <img className="brand-icon" src="/favicon.svg" alt="" /> RL Clipper
         </button>
         <span className="topbar-sub">goals · saves · epic saves → shorts</span>
         {!route.id && (

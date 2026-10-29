@@ -1,10 +1,16 @@
-# RL Clipper
+<p align="center">
+  <img src="docs/assets/icon-1024.png" width="128" height="128" alt="RL Clipper icon">
+</p>
 
-[![CI](https://github.com/Youssof-Kandil/rl-clipper/actions/workflows/ci.yml/badge.svg)](https://github.com/Youssof-Kandil/rl-clipper/actions/workflows/ci.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-informational)](#requirements)
+<h1 align="center">RL Clipper</h1>
 
-**Turn long Rocket League recordings into YouTube clips and TikToks, automatically.**
+<p align="center">
+  <a href="https://github.com/Youssof-Kandil/rl-clipper/actions/workflows/ci.yml"><img src="https://github.com/Youssof-Kandil/rl-clipper/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
+  <a href="#requirements"><img src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-informational" alt="Platforms"></a>
+</p>
+
+<p align="center"><b>Turn long Rocket League recordings into YouTube clips and TikToks, automatically.</b></p>
 
 Created by **[Youssof Kandil (@Youssof-Kandil)](https://github.com/Youssof-Kandil)**.
 

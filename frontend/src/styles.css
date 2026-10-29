@@ -55,7 +55,7 @@ label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--t
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 .topbar { display: flex; align-items: center; gap: 14px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: #0b0f15; }
 .brand { background: none; border: none; font-size: 17px; font-weight: 750; display: flex; align-items: center; gap: 8px; padding: 0; }
-.brand-ball { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffc58a, var(--accent)); box-shadow: 0 0 12px #ff8a1f88; }
+.brand-icon { width: 26px; height: 26px; }
 .topbar-sub { color: var(--muted); font-size: 12px; }
 .topbar-settings { margin-left: auto; }
 .checks li .check-action { justify-self: end; }

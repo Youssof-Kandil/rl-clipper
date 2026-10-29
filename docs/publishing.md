@@ -1,3 +1,5 @@
+<img src="assets/icon-1024.png" width="72" height="72" alt="RL Clipper icon">
+
 # Posting to YouTube and TikTok
 
 RL Clipper can upload your exports straight to **YouTube** (Shorts and regular videos) and **TikTok** (as drafts in your inbox, or posted directly).
