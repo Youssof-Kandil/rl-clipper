@@ -89,13 +89,26 @@ The **Production** page won't save until you fill in **App review**: a written e
 1. Switch **Production → Sandbox** at the top and click **Create Sandbox** (copy settings from Production if offered).
 2. Check the sandbox has the same platform, URLs (verify the prefix again if asked), Login Kit redirect URI, Content Posting API (Direct Post off) and scopes. Then **Save**.
 3. **Sandbox settings → Target users → Add account:** log in with the TikTok account(s) you'll post to (up to 10).
-4. Copy the **sandbox Client key and Client secret**. They're different from Production's.
+4. **Make that TikTok account private** (TikTok app → Profile → ☰ → Settings and privacy → Privacy → **Private account**). A sandbox (unreviewed) app only delivers inbox drafts to **private** accounts. For a public account, TikTok still reports "sent to inbox" but the draft never arrives. You can switch back to public once your app passes Production review.
+5. Copy the **sandbox Client key and Client secret**. They're different from Production's.
 
 ### 4. Connect
 In RL Clipper, open **Settings → Accounts → TikTok**, paste the sandbox key and secret, leave **Direct post** off, and click **Connect TikTok**. Authorize with a **target-user** account. The tab says **"TikTok connected"**. Then click **Save**.
 
 ### 5. Later, optional: Production review
-You only need this if other people will use *your* TikTok app, or for **direct posting**. Record the sandbox flow (connect, then send a clip to the inbox, then the draft appearing in TikTok) and submit it with an explanation like:
+You need this to send drafts to **public** accounts, for other people to use *your* TikTok app, or for **direct posting**. Record a demo of the sandbox flow on your private test account, then submit it.
+
+**Recording the demo** (one video, 1–2 minutes, MP4 under 50 MB):
+1. **Prepare:** do one real send first to be sure it works. Clear old drafts. Click **Disconnect** so you can show connecting from scratch. Keep the client key out of view, or blur it later.
+2. **Record the PC** with OBS (or Win + Alt + R) and the **phone** with its screen recorder:
+   1. The home page, then **Connect TikTok**.
+   2. TikTok's sign-in page, showing the permissions, then **Authorize**.
+   3. "TikTok connected", and Settings showing the account.
+   4. The project's **TikTok tab → Post** panel → **TikTok** next to an export, showing the "sends to your inbox as a draft" note → **Send to TikTok inbox** → the progress and result.
+   5. On the phone: the notification ("Your video is ready to edit") → TikTok's editor with the clip → **Post** (or save).
+   6. Optionally, **Disconnect**.
+3. **Join the clips in CapCut.** Trim the waiting but keep every step, add short step captions, then export 1080p (or 720p if over 50 MB).
+4. **Submit:** upload it under **App review**, with an explanation like this:
 
 > RL Clipper is a desktop app that runs on the creator's own computer. It detects goals and saves in their Rocket League gameplay recordings and exports short vertical videos. Login Kit (Desktop, user.info.basic): the creator connects their TikTok account in Settings → Accounts; we show their display name so they can see which account is connected. Content Posting API (video.upload): when the creator clicks "Send to TikTok inbox" on one of their exported clips, the app uploads that file (FILE_UPLOAD) to the creator's TikTok inbox as a draft; the creator then opens TikTok, edits and posts it themselves. Nothing is uploaded without the creator choosing the clip and clicking the button. Tokens are stored only on the creator's computer and can be revoked with Disconnect.
 
@@ -132,6 +145,7 @@ Google's Branding page and TikTok both want a privacy policy and terms of servic
 Yes. With the `video.upload` scope and your account added as a sandbox **target user**, RL Clipper sends videos to that account's inbox as drafts. No TikTok review is needed for that.
 
 **TikTok says the upload worked, but I can't find the draft.**
+- **Is the account private?** This is the most common cause. A sandbox (unreviewed) app only delivers drafts to **private** accounts. For a public account TikTok reports "sent to inbox", but nothing arrives. Set the account to Private, send again, and wait up to ~10 minutes.
 - **Which account:** the draft goes to the account you authorized with when you clicked Connect. Settings → Accounts shows its name.
 - **Where to look:** inbox drafts don't appear in your profile or Drafts at first. In the TikTok app (latest version), open **Inbox → System notifications**, or look for a notification like *"Your video is ready to edit"*. Tap it to open the editor; only then does it become a normal draft.
 - **Sandbox:** TikTok only delivers to accounts listed as **target users**.
@@ -162,6 +176,7 @@ Only into RL Clipper's Settings, which keeps it on your computer (`data/settings
 | "Your sign-in expired" | Disconnect, then connect again. On Google, publish the app (Testing mode expires sign-ins weekly). |
 | Uploaded as private | Expected until YouTube audits your Google project. Publish in YouTube Studio. |
 | "quota is used up" | Your project's daily YouTube quota resets at midnight Pacific time. You can request more in the Cloud Console. |
+| TikTok "sent to inbox" but no draft arrives | Make the TikTok account **private**: sandbox apps only deliver to private accounts. Allow ~10 minutes. |
 | "The chunk size is invalid" (TikTok) | Fixed in RL Clipper. Update to the latest version. |
 | "only a few pending drafts per day" | Post or delete the drafts in your TikTok inbox. |
 | "app isn't audited yet, so direct posts must be private" | Turn off **Direct post** to use inbox drafts, or complete TikTok's audit. |

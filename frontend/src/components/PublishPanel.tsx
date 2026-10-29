@@ -214,8 +214,9 @@ export default function PublishPanel({ project, onRefresh, onError, onSetup }: P
               </label>
             ) : (
               <p className="hint">
-                Sends the video to your TikTok inbox as a draft. Open TikTok, tap the notification, add sounds or edits, and post. The caption
-                is kept here for you to paste.
+                Sends the video to your TikTok inbox as a draft (it can take up to ~10 minutes). Open TikTok, tap the notification, add sounds
+                or edits, and post. The caption is kept here for you to paste. While your TikTok app is a sandbox (not reviewed yet), drafts
+                only arrive if your TikTok account is set to <b>private</b>.
               </p>
             ))}
           <div className="row">
