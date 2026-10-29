@@ -133,9 +133,11 @@ def test_compiled_tiktok_render(tmp_path):
                    check=True)
     info = media.probe(src)
     cues = [captions.new_cue(1.2, 2.5, "what a save")]
+    # Burning captions needs libass; some ffmpeg builds (e.g. Homebrew's) leave it out.
+    burn = media.has_filter("subtitles")
     parts = []
     for n, (a, b) in enumerate([(1.0, 3.0), (5.0, 6.5)]):
-        ass = captions.write_ass(tmp_path / f"cap_{n}.ass", cues, a, b, media.VERTICAL_SIZE)
+        ass = captions.write_ass(tmp_path / f"cap_{n}.ass", cues, a, b, media.VERTICAL_SIZE) if burn else None
         part = tmp_path / f"part_{n}.mp4"
         frame = {"info": info, "style": "focus45", "center_x": 0.5, "zoom": 1.0, "blur": 30.0}
         media.export_clip(str(src), str(part), a, b, info, 0, 1, "x264", None, frame, ass)

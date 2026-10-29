@@ -215,6 +215,8 @@ def start_sequence_export(pid: str, kind: str, mode: str) -> jobs.Job:
     vertical = kind == "tiktok"
     size = media.VERTICAL_SIZE if vertical else (project["info"]["width"], project["info"]["height"])
     cues = project.get("captions", []) if seq.get("captions") else []
+    if cues and not media.has_filter("subtitles"):
+        raise HTTPException(400, media.CAPTIONS_NEED_LIBASS)
     stem = media.safe_name(Path(project["source"]).stem)
 
     def work(job: jobs.Job) -> dict:
@@ -430,6 +432,7 @@ def health() -> dict:
         "captions_gpu": gpu_captions,
         "captions_gpu_reason": gpu_reason,
         "caption_model_ready": captions.model_ready(str(settings["caption_model"])),
+        "captions_burn": bool(ffmpeg) and media.has_filter("subtitles"),
         "rrrocket": str(exe) if exe else None,
         "rrrocket_downloadable": replays.rrrocket_url() is not None,
         "demos_dir": str(folder) if folder else None,

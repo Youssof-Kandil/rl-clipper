@@ -39,15 +39,30 @@ def tool(name: str) -> str:
     raise MediaError(f"{name} not found. Install ffmpeg ({hint}) and restart.")
 
 
-@lru_cache(maxsize=None)
-def has_encoder(name: str) -> bool:
-    """Whether this ffmpeg build includes an encoder (e.g. libx265 is missing from some)."""
+def _listed(kind: str, name: str) -> bool:
     try:
-        out = subprocess.run([tool("ffmpeg"), "-hide_banner", "-encoders"], capture_output=True, text=True,
+        out = subprocess.run([tool("ffmpeg"), "-hide_banner", f"-{kind}"], capture_output=True, text=True,
                              creationflags=_NO_WINDOW, timeout=30).stdout
     except (OSError, subprocess.TimeoutExpired, MediaError):
         return False
     return any(line.split()[1:2] == [name] for line in out.splitlines() if line.strip())
+
+
+@lru_cache(maxsize=None)
+def has_encoder(name: str) -> bool:
+    """Whether this ffmpeg build includes an encoder (e.g. libx265 is missing from some)."""
+    return _listed("encoders", name)
+
+
+@lru_cache(maxsize=None)
+def has_filter(name: str) -> bool:
+    """Whether this ffmpeg build includes a filter. ``subtitles`` (burned-in captions)
+    needs libass, which some builds leave out (Homebrew's basic ffmpeg, for one)."""
+    return _listed("filters", name)
+
+
+CAPTIONS_NEED_LIBASS = ("This ffmpeg can't burn in captions (it was built without libass). Install a full "
+                        "ffmpeg build, or turn off \"Burn in captions\" for this export.")
 
 
 def _parse_rate(rate: str | None) -> float:

@@ -139,6 +139,8 @@ export interface Health {
   captions_gpu?: boolean;
   captions_gpu_reason?: string;
   caption_model_ready?: boolean;
+  /** ffmpeg has libass (the subtitles filter) to burn captions in. */
+  captions_burn?: boolean;
   rrrocket?: string | null;
   rrrocket_downloadable?: boolean;
   demos_dir?: string | null;

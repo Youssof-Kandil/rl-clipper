@@ -195,6 +195,13 @@ function SystemCheck({ health }: { health: Health }) {
         : `CPU, about 3 s per 10 s clip${health.captions_gpu_reason ? ` (${health.captions_gpu_reason})` : ""}`,
     },
     {
+      ok: !!health.captions_burn,
+      label: "Burned-in captions",
+      detail: health.captions_burn
+        ? "supported (libass)"
+        : "this ffmpeg lacks libass: install a full ffmpeg build to burn captions in",
+    },
+    {
       ok: !!health.caption_model_ready,
       label: "Speech model",
       detail: health.caption_model_ready ? "downloaded" : "downloads from the TikTok tab the first time (~480 MB)",

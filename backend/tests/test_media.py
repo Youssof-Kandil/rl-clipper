@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app import media, store
 
 
@@ -20,7 +22,8 @@ def test_proxy_audio_is_mixed_only():
 
 
 def test_clip_filename():
-    assert media.clip_filename(r"C:\vids\RL Session #3.mkv", "epic_save", 3725) == "RL_Session_3_epic_save_1-02-05.mp4"
+    path = str(Path("vids") / "RL Session #3.mkv")  # this OS's separators
+    assert media.clip_filename(path, "epic_save", 3725) == "RL_Session_3_epic_save_1-02-05.mp4"
     assert media.clip_filename("a.mp4", "goal", 65) == "a_goal_01-05.mp4"
 
 

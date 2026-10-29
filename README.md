@@ -93,6 +93,7 @@ Everything runs on your own computer. Nothing is uploaded anywhere.
 **Platforms:**
 - **Windows 10/11:** fully supported.
 - **macOS (Intel and Apple Silicon) and Linux:** work, running on the CPU. On Linux, Rocket League runs through Steam Proton, and its replay folder there is found automatically.
+- **Burning captions in** needs an ffmpeg built with **libass**. The Windows (winget) and most Linux builds have it. Homebrew's basic `ffmpeg` on macOS may not: the home page's **This computer** panel says so. In that case install a full ffmpeg build, or export without burned-in captions.
 
 ## Install and run
 
