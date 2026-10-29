@@ -48,6 +48,17 @@ export default function App() {
       ) : (
         <Home onOpen={open} health={health} />
       )}
+      <footer className="credit">
+        RL Clipper · created by{" "}
+        <a href="https://github.com/Youssof-Kandil" target="_blank" rel="noreferrer">
+          Youssof Kandil (@Youssof-Kandil)
+        </a>{" "}
+        ·{" "}
+        <a href="https://github.com/Youssof-Kandil/rl-clipper" target="_blank" rel="noreferrer">
+          source
+        </a>{" "}
+        · Apache-2.0
+      </footer>
     </div>
   );
 }

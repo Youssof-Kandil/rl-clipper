@@ -1,0 +1,26 @@
+RL Clipper
+Copyright 2026 Youssof Kandil (Youssof-Kandil)
+https://github.com/Youssof-Kandil/rl-clipper
+
+Created and maintained by Youssof Kandil (https://github.com/Youssof-Kandil).
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+Under Section 4(d) of that license, any redistribution of this product or of
+a work derived from it must include a readable copy of the attribution notices
+in this NOTICE file, and modified files must carry prominent notices stating
+that they were changed.
+
+------------------------------------------------------------------------------
+Third-party software used by RL Clipper (not bundled; installed separately or
+downloaded at run time):
+
+- ffmpeg (https://ffmpeg.org) - LGPL-2.1+ / GPL-2.0+
+- rrrocket (https://github.com/nickbabcock/rrrocket) - MIT
+- faster-whisper (https://github.com/SYSTRAN/faster-whisper) - MIT
+- Whisper models by OpenAI (https://github.com/openai/whisper) - MIT
+- RapidOCR (https://github.com/RapidAI/RapidOCR) - Apache-2.0
+- FastAPI (https://fastapi.tiangolo.com) - MIT
+- React (https://react.dev) - MIT
+
+Rocket League is a trademark of Psyonix. This project is not affiliated with
+or endorsed by Psyonix or Epic Games.

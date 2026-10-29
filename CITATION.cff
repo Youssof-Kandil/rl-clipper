@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use or build on RL Clipper, please credit it like this."
+title: "RL Clipper"
+abstract: "Turn Rocket League recordings into YouTube clips and TikToks: replay-synced play detection, 16:9 / 9:16 timelines and auto-captions, all running locally."
+authors:
+  - family-names: Kandil
+    given-names: Youssof
+    alias: Youssof-Kandil
+repository-code: "https://github.com/Youssof-Kandil/rl-clipper"
+url: "https://github.com/Youssof-Kandil/rl-clipper"
+license: Apache-2.0
+version: 0.1.0
+date-released: 2026-10-29

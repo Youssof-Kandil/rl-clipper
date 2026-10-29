@@ -1,0 +1,69 @@
+name: Bug report
+description: Something doesn't work, or clips are wrong / missing / out of sync
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please search [existing issues](https://github.com/Youssof-Kandil/rl-clipper/issues) first.
+        Don't post passwords, tokens, or recordings/replays you don't want public.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: "I opened a 20-minute recording with saved replays; the save at 5:48 shows a player who didn't make it..."
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part?
+      options:
+        - Detection (missing / wrong / extra plays)
+        - Replay sync (clips early or late)
+        - Clip editor / trimming
+        - YouTube or TikTok timeline / preview
+        - Captions (transcription or look)
+        - Export (fails, size, quality, audio tracks)
+        - Install / startup
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+  - type: textarea
+    id: system
+    attributes:
+      label: "\"This computer\" panel"
+      description: Copy the lines from the home page's "This computer" panel (ffmpeg, encoding, captions, rrrocket, replays).
+      render: text
+  - type: input
+    id: os
+    attributes:
+      label: OS and GPU
+      placeholder: "Windows 11, RTX 3060 / macOS 15 M2 / Ubuntu 24.04, no GPU"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: "`git rev-parse --short HEAD` in the project folder, or the release you downloaded."
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal output
+      description: The output of `run.ps1` / `run.sh` around the error (tracebacks, ffmpeg errors).
+      render: text
+  - type: textarea
+    id: clips
+    attributes:
+      label: For wrong or missing clips
+      description: Time in the video, play type, whether that match had a saved replay, and the sync source shown in the Matches panel (match clock / goals / start time).

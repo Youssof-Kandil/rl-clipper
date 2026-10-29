@@ -2,6 +2,9 @@
   "name": "rl-clipper-frontend",
   "private": true,
   "version": "0.1.0",
+  "author": "Youssof Kandil (https://github.com/Youssof-Kandil)",
+  "license": "Apache-2.0",
+  "repository": "github:Youssof-Kandil/rl-clipper",
   "type": "module",
   "scripts": {
     "dev": "vite",

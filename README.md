@@ -1,6 +1,12 @@
 # RL Clipper
 
+[![CI](https://github.com/Youssof-Kandil/rl-clipper/actions/workflows/ci.yml/badge.svg)](https://github.com/Youssof-Kandil/rl-clipper/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-informational)](#requirements)
+
 **Turn long Rocket League recordings into YouTube clips and TikToks, automatically.**
+
+Created by **[Youssof Kandil (@Youssof-Kandil)](https://github.com/Youssof-Kandil)**.
 
 RL Clipper finds every **goal, save and epic save** in an OBS recording. It reads the exact moments from Rocket League's own replay files, or from the on-screen point tags when there's no replay. You get a clip for every play: review and trim them, arrange them on a YouTube (16:9) or TikTok (9:16) timeline, add auto-captions of what you said, and export one video or separate clips.
 
@@ -24,6 +30,7 @@ Everything runs on your own computer. Nothing is uploaded anywhere.
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
 - [Project layout](#project-layout)
+- [Contributing and reporting bugs](#contributing-and-reporting-bugs)
 - [Credits and license](#credits-and-license)
 
 ---
@@ -304,12 +311,22 @@ uv run python -m app.detect path/to/recording.mkv --debug ../data/debug
 
 CI (`.github/workflows/ci.yml`) runs the backend tests on Windows, macOS and Linux and builds the UI.
 
-**Contributing:** issues and pull requests are welcome. Please add a test for detection or sync changes; the `tests/fixtures` scoreboard crops and the replay JSON helpers in `tests/test_replays.py` make that easy.
+## Contributing and reporting bugs
+
+- **Found a problem?** [Open a bug report](https://github.com/Youssof-Kandil/rl-clipper/issues/new/choose). The form asks for what's needed to fix it, including the home page's "This computer" panel.
+- **Have an idea?** [Open a feature request](https://github.com/Youssof-Kandil/rl-clipper/issues/new/choose).
+- **Want to help?** Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, rules and the pull request checklist, then send a pull request.
+- **Security issue?** Report it privately; see [SECURITY.md](SECURITY.md).
+
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Project layout
 
 ```
 run.ps1 / run.sh              launchers (install deps, build the UI, start the server)
+LICENSE, NOTICE               Apache-2.0 + attribution (keep NOTICE in any redistribution)
+CONTRIBUTING.md, SECURITY.md  how to contribute and report problems; CODE_OF_CONDUCT.md
+.github/                      CI, issue forms, pull request template
 backend/
   app/main.py                 FastAPI app: REST API, background jobs, serves the built UI
   app/config.py               paths and settings (data/settings.json)
@@ -331,7 +348,15 @@ tools/                        rrrocket download (not in git)
 
 ## Credits and license
 
-RL Clipper is released under the [MIT License](LICENSE).
+**RL Clipper is created and maintained by [Youssof Kandil (@Youssof-Kandil)](https://github.com/Youssof-Kandil).**
+
+It's open source under the [Apache License 2.0](LICENSE). You may use, modify and redistribute it, including commercially, as long as you:
+
+- **keep the attribution:** include the [NOTICE](NOTICE) file, crediting Youssof Kandil, with any copy or derived work you distribute;
+- **mark what you changed:** modified files must say that you changed them;
+- **keep the license:** include a copy of the Apache 2.0 license.
+
+If you build on RL Clipper, a link back to this repository is appreciated. [CITATION.cff](CITATION.cff) has the citation details.
 
 It builds on:
 
