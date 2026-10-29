@@ -1,0 +1,31 @@
+[project]
+name = "rl-clipper"
+version = "0.1.0"
+description = "Auto-clip goals, saves and epic saves from Rocket League recordings"
+readme = "../README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "numpy>=1.26,<3",
+    "opencv-python-headless>=4.9",
+    "rapidocr-onnxruntime>=1.3.24",
+    "faster-whisper>=1.1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27"]
+# Optional: NVIDIA libraries for transcribing captions on the GPU (~1 GB).
+# `uv sync --group gpu`; run.ps1 / run.sh add it when an NVIDIA card is present.
+gpu = [
+    "nvidia-cublas-cu12>=12.4; sys_platform != 'darwin' and platform_machine != 'aarch64' and platform_machine != 'arm64'",
+    "nvidia-cudnn-cu12>=9.1,<10; sys_platform != 'darwin' and platform_machine != 'aarch64' and platform_machine != 'arm64'",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
