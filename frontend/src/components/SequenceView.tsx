@@ -15,6 +15,7 @@ import {
 } from "../api";
 import { activeWord, drawCaption, drawFrame, type CaptionLook, type Look } from "../render";
 import JobBar from "./JobBar";
+import PublishPanel from "./PublishPanel";
 
 interface Props {
   project: Project;
@@ -403,6 +404,8 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
             </div>
             {exportJob && <JobBar label="Export" job={exportJob} onCancel={() => api.cancelJob(exportJob.id)} files />}
           </section>
+
+          <PublishPanel project={project} onRefresh={onRefresh} onError={onError} />
 
           {selected && selectedEvent && (
             <section className="card seq-inspector">

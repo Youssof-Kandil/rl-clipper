@@ -206,6 +206,19 @@ function SystemCheck({ health }: { health: Health }) {
       label: "Speech model",
       detail: health.caption_model_ready ? "downloaded" : "downloads automatically the first time you transcribe",
     },
+    ...(["youtube", "tiktok"] as const).map((p) => {
+      const a = health.accounts?.[p];
+      const label = p === "youtube" ? "YouTube" : "TikTok";
+      return {
+        ok: !!a?.connected,
+        label: `${label} posting`,
+        detail: a?.connected
+          ? `connected${a.name ? `: ${a.name}` : ""}`
+          : a?.configured
+            ? "keys added: connect in a project's Settings → Accounts"
+            : "optional: add your own app keys in Settings → Accounts",
+      };
+    }),
     {
       ok: !!health.rrrocket,
       label: "Replay reader (rrrocket)",

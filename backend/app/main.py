@@ -2,23 +2,29 @@
 
 from __future__ import annotations
 
+import html
 import os
 import shutil
 import subprocess
 import sys
 import threading
+import time
+from urllib.parse import quote
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import cv2
+import httpx
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import captions, jobs, media, picker, replays, sequences, store
+from .publish import accounts, tiktok, youtube
+from .publish.accounts import PublishError
 from .config import DATA_DIR, FRONTEND_DIST, UPLOADS_DIR, ensure_dirs, load_settings, save_settings
 from .detect.events import Event
 
@@ -409,6 +415,16 @@ class TranscribeIn(BaseModel):
     item_ids: list[str] | None = None
 
 
+class PublishIn(BaseModel):
+    platform: str  # youtube | tiktok
+    file: str  # an export's path (must be one of this project's exports)
+    title: str = ""
+    description: str = ""
+    tags: list[str] = []
+    privacy: str = "private"  # youtube: private/unlisted/public; tiktok direct: a creator_info option
+    publish_at: str | None = None  # youtube: ISO 8601 UTC time to go public
+
+
 class CaptionsIn(BaseModel):
     captions: list[dict]
 
@@ -439,6 +455,7 @@ def health() -> dict:
         "rrrocket_downloadable": replays.rrrocket_url() is not None,
         "demos_dir": str(folder) if folder else None,
         "picker": picker.available(),
+        "accounts": accounts.status(settings),
     }
 
 
@@ -681,6 +698,149 @@ def put_captions(pid: str, body: CaptionsIn) -> list[dict]:
 @app.post("/api/projects/{pid}/captions/transcribe")
 def transcribe_captions(pid: str, body: TranscribeIn) -> dict:
     return start_transcribe(pid, body.item_ids).to_dict()
+
+
+# ---------- posting to YouTube / TikTok ----------
+
+def _platform(platform: str) -> str:
+    if platform not in accounts.PLATFORMS:
+        raise HTTPException(404, "Unknown platform")
+    return platform
+
+
+@app.get("/api/accounts")
+def get_accounts() -> dict:
+    return accounts.status(load_settings())
+
+
+@app.get("/api/auth/{platform}/start")
+def auth_start(platform: str, request: Request) -> RedirectResponse:
+    """Opened in a browser tab: sends you to Google / TikTok to allow posting."""
+    # The provider sends you back to this server on 127.0.0.1 (registered as the redirect URI).
+    redirect = f"http://127.0.0.1:{request.url.port or 8765}/api/auth/{_platform(platform)}/callback"
+    try:
+        return RedirectResponse(accounts.auth_url(platform, load_settings(), redirect))
+    except PublishError as exc:
+        return RedirectResponse(f"/api/auth/{platform}/done?error={quote(str(exc))}")
+
+
+@app.get("/api/auth/{platform}/callback")
+def auth_callback(platform: str, code: str = "", state: str = "", error: str = "",
+                  error_description: str = "") -> RedirectResponse:
+    _platform(platform)
+    if error or not code:
+        msg = error_description or error or "Sign-in was cancelled."
+        return RedirectResponse(f"/api/auth/{platform}/done?error={quote(msg)}")
+    try:
+        name = accounts.finish_login(state, code, load_settings()).get("name", "")
+    except (PublishError, httpx.HTTPError) as exc:
+        return RedirectResponse(f"/api/auth/{platform}/done?error={quote(str(exc))}")
+    return RedirectResponse(f"/api/auth/{platform}/done?name={quote(name)}")
+
+
+@app.get("/api/auth/{platform}/done")
+def auth_done(platform: str, name: str = "", error: str = "") -> HTMLResponse:
+    """A small page for the sign-in tab (the app polls /api/accounts to update itself)."""
+    label = "YouTube" if platform == "youtube" else "TikTok"
+    if error:
+        title, body = f"Couldn't connect {label}", html.escape(error)
+    else:
+        title, body = f"{label} connected", (f"Signed in as <b>{html.escape(name)}</b>. " if name else "") + \
+            "You can close this tab and go back to RL Clipper."
+    return HTMLResponse(
+        f"<!doctype html><meta charset=utf-8><title>{title}</title>"
+        "<body style='font:16px system-ui;background:#0d1117;color:#e6ebf2;display:grid;place-items:center;"
+        f"height:100vh;margin:0'><div style='max-width:520px;text-align:center'><h2>{title}</h2><p>{body}</p></div>")
+
+
+@app.delete("/api/accounts/{platform}")
+def disconnect_account(platform: str) -> dict:
+    accounts.disconnect(_platform(platform), load_settings())
+    return accounts.status(load_settings())
+
+
+@app.get("/api/tiktok/creator-info")
+def tiktok_creator_info() -> dict:
+    """Direct-post mode: the TikTok account name and allowed privacy options."""
+    try:
+        return tiktok.creator_info(load_settings())
+    except PublishError as exc:
+        raise HTTPException(400, str(exc)) from None
+
+
+@app.get("/api/projects/{pid}/exports")
+def list_exports(pid: str) -> list[dict]:
+    """This project's exported files that still exist, newest first, with their shape.
+    Also picks up this recording's videos sitting in the export folder (made elsewhere,
+    or before exports were tracked)."""
+    project = _project(pid)
+    settings = load_settings()
+    known = [{"path": f["path"], "name": f["name"]} for f in project.get("exports", [])]
+    stem = media.safe_name(Path(project["source"]).stem)
+    for folder in {Path(settings["export_dir"]) if settings["export_dir"] else None, store.project_dir(pid) / "exports"}:
+        if folder and folder.is_dir():
+            found = sorted(folder.glob(f"{stem}_*.mp4"), key=lambda p: p.stat().st_mtime)
+            known += [{"path": str(p), "name": p.name} for p in found]
+    known.sort(key=lambda f: os.path.getmtime(f["path"]) if os.path.isfile(f["path"]) else 0)
+    seen, out = set(), []
+    for f in reversed(known):
+        path = f["path"]
+        if path in seen or not os.path.isfile(path):
+            continue
+        seen.add(path)
+        entry = {"path": path, "name": f["name"], "size": os.path.getsize(path)}
+        try:
+            info = media.probe(path)
+            entry.update(width=info["width"], height=info["height"], duration=info["duration"])
+        except media.MediaError:
+            pass
+        out.append(entry)
+        if len(out) >= 40:
+            break
+    return out
+
+
+@app.post("/api/projects/{pid}/publish")
+def publish(pid: str, body: PublishIn) -> dict:
+    project = _project(pid)
+    platform = _platform(body.platform)
+    if body.file not in {f["path"] for f in list_exports(pid)}:
+        raise HTTPException(400, "That export isn't there anymore. Export it again.")
+    settings = load_settings()
+    try:
+        accounts.access_token(platform, settings)  # fail now, not in the background, if not connected
+    except PublishError as exc:
+        raise HTTPException(400, str(exc)) from None
+    try:
+        info = media.probe(body.file)
+    except media.MediaError as exc:
+        raise HTTPException(400, str(exc)) from None
+    vertical = info["height"] > info["width"]
+
+    def work(job: jobs.Job) -> dict:
+        if platform == "youtube":
+            short = vertical and info["duration"] <= youtube.SHORTS_MAX_SECONDS
+            meta = youtube.build_metadata(body.title, body.description, body.tags, body.privacy, body.publish_at, short)
+            res = youtube.upload(body.file, meta, settings, job.update, lambda: job.cancelled)
+            post = {"url": res["url"], "remote_id": res["id"], "privacy": res["privacy"], "short": short,
+                    "publish_at": body.publish_at,
+                    # Unaudited Google projects get every upload locked to private.
+                    "forced_private": res["privacy"] == "private" and body.privacy != "private" and not body.publish_at}
+        else:
+            direct = bool(settings.get("tiktok_direct_post"))
+            caption = " ".join(x for x in (body.title.strip(), body.description.strip()) if x)
+            res = tiktok.upload(body.file, settings, caption, body.privacy if direct else None, job.update,
+                                lambda: job.cancelled)
+            post = {"remote_id": res["publish_id"], "mode": res["mode"], "status": res["status"],
+                    "privacy": body.privacy if direct else "draft", "url": "https://www.tiktok.com/"}
+        record = {"platform": platform, "file": body.file, "name": Path(body.file).name, "title": body.title,
+                  "time": time.time(), **post}
+        store.mutate(pid, lambda p: p.update(posts=(p.get("posts", []) + [record])[-200:]))
+        return record
+
+    job = jobs.submit(f"publish_{platform}", pid, work)
+    store.mutate(pid, lambda p: p["jobs"].update({f"publish_{platform}": job.id}))
+    return job.to_dict()
 
 
 @app.get("/api/captions/status")

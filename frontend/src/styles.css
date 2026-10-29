@@ -249,6 +249,23 @@ label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--t
 .export-dest { display: flex; gap: 6px; align-items: center; margin-top: 8px; font-size: 12px; min-width: 0; }
 .export-dest .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; min-width: 0; }
 .export-dest .grow { flex: 1; }
+/* Settings → Accounts */
+fieldset.account { grid-template-columns: 1fr 1fr; }
+fieldset.account legend { gap: 8px; font-weight: 600; }
+fieldset.account .full { grid-column: 1 / -1; }
+.acct-ok { color: var(--manual); font-weight: 400; }
+/* Publish panel */
+.publish-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 260px; overflow: auto; font-size: 13px; }
+.publish-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+.publish-list li:first-child { border-top: none; }
+.publish-list .pl-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.publish-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.publish-form textarea { min-height: 70px; resize: vertical; }
+.publish-form .count { font-size: 11px; color: var(--muted); text-align: right; }
+.posts { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; }
+.posts li { padding: 3px 0; }
+.note { font-size: 12px; color: var(--goal); }
+.small-text { font-size: 12px; }
 .small-select { font-size: 12px; padding: 3px 6px; }
 .modal.small { width: min(480px, 100%); }
 .modal.small p { margin: 8px 0 0; }

@@ -59,6 +59,11 @@ Everything runs on your own computer. Nothing is uploaded anywhere.
   - Whole sentences, with the word you're saying highlighted as you say it.
   - Editable line by line.
   - Burned into the video.
+- **Post from the app:**
+  - YouTube (Shorts, regular videos, scheduling).
+  - TikTok (inbox drafts, or direct posting).
+
+  Uses your own developer keys; see [docs/publishing.md](docs/publishing.md).
 - **Keeps your OBS audio separate.** Every export has three tracks: **Mixed** (game + mic, the default), **Game** and **Mic**.
 - **Works on any computer.**
   - Uses an NVIDIA GPU for encoding and captions when there is one, and falls back to the CPU otherwise.
@@ -183,6 +188,15 @@ A different folder can be set in Settings. Matches without a saved replay still 
 6. **Export:** **Export as one video** or **Export separate clips**.
    - The first export asks where files should go.
    - **Size:** Balanced (default), Best, or Small (HEVC).
+
+### Posting to YouTube and TikTok
+
+Exports can be posted straight from the **Post** panel in the YouTube and TikTok tabs, using your own Google and TikTok developer apps.
+
+- **YouTube:** 9:16 exports become Shorts. Uploads can be scheduled. Uploads stay private until your Google project passes YouTube's API audit.
+- **TikTok:** by default the video goes to your TikTok **inbox as a draft**, with no TikTok review needed; you finish the post in the app. Direct posting is a setting, for after TikTok's audit.
+
+Setup takes about 10 minutes per platform: **[docs/publishing.md](docs/publishing.md)**.
 
 ### Output files
 
@@ -338,6 +352,7 @@ backend/
   app/sequences.py            YouTube / TikTok timelines
   app/captions.py             transcription, caption lines, ASS subtitles
   app/picker.py               native file / folder dialogs
+  app/publish/                YouTube / TikTok posting: OAuth (your own app keys), uploads
   tests/                      pytest suite + fixtures
 frontend/src/
   components/                 Home, project tabs, clip list, editor, timelines, settings

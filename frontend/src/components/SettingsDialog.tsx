@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, STYLE_LABEL, type Settings, type VerticalStyle } from "../api";
+import AccountsSection from "./AccountsSection";
 
 interface Props {
   projectId: string;
@@ -103,6 +104,8 @@ export default function SettingsDialog({ projectId, time, settings, onClose, onS
               Replay folder (empty = auto-detect)
               <input value={String(draft.demos_dir ?? "")} onChange={(e) => set("demos_dir", e.target.value)} placeholder="…\My Games\Rocket League\TAGame\Demos" />
             </label>
+
+            <AccountsSection draft={draft} set={set} />
 
             <h3>Audio tracks in your recording</h3>
             <div className="row">

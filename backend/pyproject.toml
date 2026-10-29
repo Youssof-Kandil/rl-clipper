@@ -14,6 +14,7 @@ dependencies = [
     "opencv-python-headless>=4.9",
     "rapidocr-onnxruntime>=1.3.24",
     "faster-whisper>=1.1",
+    "httpx>=0.27",
 ]
 
 [project.urls]
@@ -21,7 +22,9 @@ Homepage = "https://github.com/Youssof-Kandil/rl-clipper"
 Issues = "https://github.com/Youssof-Kandil/rl-clipper/issues"
 
 [dependency-groups]
-dev = ["pytest>=8", "httpx>=0.27"]
+dev = [
+    "pytest>=8",
+]
 # Optional: NVIDIA libraries for transcribing captions on the GPU (~1 GB).
 # `uv sync --group gpu`; run.ps1 / run.sh add it when an NVIDIA card is present.
 gpu = [

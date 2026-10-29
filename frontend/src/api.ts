@@ -115,6 +115,7 @@ export interface Project {
   job_status: Partial<Record<string, Job>>;
   sequences?: Partial<Record<SeqKind, Sequence>>;
   captions?: Cue[];
+  posts?: Post[];
 }
 
 export interface ProjectSummary {
@@ -128,6 +129,53 @@ export interface ProjectSummary {
 }
 
 export type Settings = Record<string, number | boolean | string | number[]>;
+
+export type Platform = "youtube" | "tiktok";
+
+export interface AccountState {
+  configured: boolean;
+  connected: boolean;
+  name: string;
+  scope: string;
+  direct_post?: boolean;
+}
+export type Accounts = Record<Platform, AccountState>;
+
+export interface ExportFile {
+  path: string;
+  name: string;
+  size: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+}
+
+/** A post made from RL Clipper (project.posts). */
+export interface Post {
+  platform: Platform;
+  file: string;
+  name: string;
+  title: string;
+  time: number;
+  url: string;
+  remote_id: string;
+  privacy: string;
+  short?: boolean;
+  publish_at?: string | null;
+  forced_private?: boolean;
+  mode?: "inbox" | "direct";
+  status?: string;
+}
+
+export interface PublishRequest {
+  platform: Platform;
+  file: string;
+  title: string;
+  description: string;
+  tags: string[];
+  privacy: string;
+  publish_at: string | null;
+}
 
 /** What this machine can do (only ffmpeg is required; the rest have fallbacks). */
 export interface Health {
@@ -145,6 +193,7 @@ export interface Health {
   rrrocket_downloadable?: boolean;
   demos_dir?: string | null;
   picker?: boolean;
+  accounts?: Accounts;
 }
 
 export const TYPE_LABEL: Record<EventType, string> = {
@@ -218,6 +267,14 @@ export const api = {
   captionStatus: () => call<{ model: string; ready: boolean; size: string; device: string | null }>("GET", "/api/captions/status"),
   downloadCaptionModel: () => call<Job>("POST", "/api/captions/model"),
   job: (jobId: string) => call<Job>("GET", `/api/jobs/${jobId}`),
+  accounts: () => call<Accounts>("GET", "/api/accounts"),
+  disconnect: (platform: Platform) => call<Accounts>("DELETE", `/api/accounts/${platform}`),
+  /** Opens Google / TikTok sign-in in a new tab; poll accounts() to see it finish. */
+  connect: (platform: Platform) => window.open(`/api/auth/${platform}/start`, "_blank", "noopener"),
+  tiktokCreatorInfo: () =>
+    call<{ creator_nickname?: string; privacy_level_options?: string[] }>("GET", "/api/tiktok/creator-info"),
+  exportsList: (id: string) => call<ExportFile[]>("GET", `/api/projects/${id}/exports`),
+  publish: (id: string, req: PublishRequest) => call<Job>("POST", `/api/projects/${id}/publish`, req),
   settings: () => call<Settings>("GET", "/api/settings"),
   saveSettings: (s: Settings) => call<Settings>("PUT", "/api/settings", s),
 };

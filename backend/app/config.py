@@ -73,6 +73,15 @@ DEFAULT_SETTINGS: dict = {
     "caption_highlight": True,
     "caption_color": "#2EA8FF",
     "caption_max_words": 8,
+    # Posting (your own developer apps; see docs/publishing.md). Tokens live in
+    # data/accounts.json, never in settings.
+    "youtube_client_id": "",
+    "youtube_client_secret": "",
+    "tiktok_client_key": "",
+    "tiktok_client_secret": "",
+    # TikTok: post directly instead of sending a draft to your inbox. Needs the
+    # video.publish scope and TikTok's audit, or posts are forced to private.
+    "tiktok_direct_post": False,
     # Rocket League replays: matched to the recording by start time and used instead of
     # on-screen detection for every match that has one. Empty = auto-detect.
     "use_replays": True,
