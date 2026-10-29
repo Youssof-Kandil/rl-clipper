@@ -20,7 +20,13 @@ const STEPS = [
   },
 ];
 
-export default function Home({ onOpen, health }: { onOpen: (id: string) => void; health: Health | null }) {
+interface HomeProps {
+  onOpen: (id: string) => void;
+  health: Health | null;
+  onSettings: (focus?: "all" | "accounts") => void;
+}
+
+export default function Home({ onOpen, health, onSettings }: HomeProps) {
   const [path, setPath] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -152,7 +158,9 @@ export default function Home({ onOpen, health }: { onOpen: (id: string) => void;
         <p className="hint">Everything runs on this computer: nothing is uploaded anywhere.</p>
       </section>
 
-      {health?.ok && <SystemCheck health={health} />}
+      {health?.ok && <PostingCard health={health} onSettings={onSettings} />}
+
+      {health?.ok && <SystemCheck health={health} onSettings={onSettings} />}
 
       {projects.length > 0 && (
         <section className="card">
@@ -178,9 +186,48 @@ export default function Home({ onOpen, health }: { onOpen: (id: string) => void;
   );
 }
 
+/** Connect YouTube / TikTok for posting; each button opens Settings at Accounts. */
+function PostingCard({ health, onSettings }: { health: Health; onSettings: (focus: "accounts") => void }) {
+  const guide = "https://github.com/Youssof-Kandil/rl-clipper/blob/main/docs/publishing.md";
+  return (
+    <section className="card posting">
+      <div className="row spread">
+        <h2>Post to YouTube & TikTok</h2>
+        <a className="small-text" href={guide} target="_blank" rel="noreferrer">
+          Setup guide
+        </a>
+      </div>
+      <p className="muted">
+        Send exports straight from the YouTube and TikTok tabs: YouTube Shorts (with scheduling) and TikTok drafts. Uses your own free developer
+        keys, about 10 minutes per platform.
+      </p>
+      <div className="posting-accounts">
+        {(["youtube", "tiktok"] as const).map((p) => {
+          const a = health.accounts?.[p];
+          const label = p === "youtube" ? "YouTube" : "TikTok";
+          return (
+            <div key={p} className={`posting-account ${a?.connected ? "on" : ""}`}>
+              <span className={`seq-chip ${p} ${a?.connected ? "on" : ""}`}>{p === "youtube" ? "YT" : "TT"}</span>
+              <div className="grow">
+                <strong>{label}</strong>
+                <div className="muted small-text">
+                  {a?.connected ? `Connected${a.name ? ` as ${a.name}` : ""}` : a?.configured ? "Keys added, not connected yet" : "Not set up"}
+                </div>
+              </div>
+              <button className={a?.connected ? "ghost small" : "primary small"} onClick={() => onSettings("accounts")}>
+                {a?.connected ? "Manage" : `Connect ${label}`}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 /** What this computer can do. Only ffmpeg is required; everything else falls back. */
-function SystemCheck({ health }: { health: Health }) {
-  const rows: { ok: boolean; label: string; detail: string }[] = [
+function SystemCheck({ health, onSettings }: { health: Health; onSettings: (focus: "accounts") => void }) {
+  const rows: { ok: boolean; label: string; detail: string; action?: () => void }[] = [
     { ok: !!health.ffmpeg, label: "ffmpeg", detail: health.ffmpeg ? "found" : "required: install it and restart" },
     {
       ok: !!health.nvenc,
@@ -215,8 +262,9 @@ function SystemCheck({ health }: { health: Health }) {
         detail: a?.connected
           ? `connected${a.name ? `: ${a.name}` : ""}`
           : a?.configured
-            ? "keys added: connect in a project's Settings → Accounts"
-            : "optional: add your own app keys in Settings → Accounts",
+            ? "keys added, not connected yet"
+            : "optional: add your own app keys",
+        action: a?.connected ? undefined : () => onSettings("accounts"),
       };
     }),
     {
@@ -239,12 +287,17 @@ function SystemCheck({ health }: { health: Health }) {
       <h2>This computer</h2>
       <ul className="checks">
         {rows.map((r) => (
-          <li key={r.label} className={r.ok ? "ok" : "optional"}>
+          <li key={r.label} className={`${r.ok ? "ok" : "optional"} ${r.action ? "has-action" : ""}`}>
             <span className="check-dot">{r.ok ? "✓" : "–"}</span>
             <strong>{r.label}</strong>
             <span className="muted" title={r.detail}>
               {r.detail}
             </span>
+            {r.action && (
+              <button className="ghost small check-action" onClick={r.action}>
+                Set up
+              </button>
+            )}
           </li>
         ))}
       </ul>

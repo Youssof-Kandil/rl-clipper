@@ -30,10 +30,12 @@ interface Props {
   project: Project;
   onRefresh: () => void;
   onError: (msg: string) => void;
+  /** Open Settings at Accounts. */
+  onSetup: () => void;
 }
 
 /** Post exported files to YouTube (Shorts or regular) and TikTok (inbox draft or direct). */
-export default function PublishPanel({ project, onRefresh, onError }: Props) {
+export default function PublishPanel({ project, onRefresh, onError, onSetup }: Props) {
   const [accounts, setAccounts] = useState<Accounts | null>(null);
   const [files, setFiles] = useState<ExportFile[]>([]);
   const [form, setForm] = useState<{ platform: Platform; file: ExportFile } | null>(null);
@@ -49,6 +51,16 @@ export default function PublishPanel({ project, onRefresh, onError }: Props) {
     api.accounts().then(setAccounts).catch(() => {});
     api.exportsList(project.id).then(setFiles).catch(() => {});
   }, [project.id, exportDone]);
+  // Pick up a Connect done in Settings without reloading the page.
+  useEffect(() => {
+    const onFocus = () => api.accounts().then(setAccounts).catch(() => {});
+    window.addEventListener("focus", onFocus);
+    const t = setInterval(onFocus, 5000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      clearInterval(t);
+    };
+  }, []);
 
   const open = async (platform: Platform, file: ExportFile) => {
     setForm({ platform, file });
@@ -104,13 +116,16 @@ export default function PublishPanel({ project, onRefresh, onError }: Props) {
     <section className="card seq-publish">
       <div className="row spread">
         <h3>Post</h3>
-        <span className="muted small-text">
-          {(["youtube", "tiktok"] as Platform[]).map((p) => `${LABEL[p]}: ${ready(p) ? accounts![p].name || "connected" : "not connected"}`).join(" · ")}
+        <span className="row">
+          <span className="muted small-text">
+            {(["youtube", "tiktok"] as Platform[]).map((p) => `${LABEL[p]}: ${ready(p) ? accounts![p].name || "connected" : "not connected"}`).join(" · ")}
+          </span>
+          <button className={`small ${ready("youtube") && ready("tiktok") ? "ghost" : "primary"}`} onClick={onSetup}>
+            {ready("youtube") && ready("tiktok") ? "Accounts" : "Set up posting"}
+          </button>
         </span>
       </div>
-      {!ready("youtube") && !ready("tiktok") && (
-        <p className="hint">Connect YouTube or TikTok in Settings → Accounts to post exports from here.</p>
-      )}
+      {!ready("youtube") && !ready("tiktok") && <p className="hint">Connect YouTube or TikTok to post exports from here.</p>}
       {!files.length && <p className="muted">Export something first; your exports appear here.</p>}
       <ul className="publish-list">
         {files.map((f) => {

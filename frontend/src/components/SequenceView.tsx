@@ -28,6 +28,8 @@ interface Props {
   onSettings: (patch: Settings) => void;
   onError: (msg: string) => void;
   onRefresh: () => void;
+  /** Open Settings at Accounts (connect YouTube / TikTok). */
+  onSetupPosting: () => void;
 }
 
 export const newItem = (e: ClipEvent): SeqItem => ({
@@ -49,7 +51,7 @@ const newCue = (start: number, end: number, text: string): Cue => ({
 const round = (t: number) => Math.round(t * 100) / 100;
 const len = (i: SeqItem) => i.end - i.start;
 
-export default function SequenceView({ project, kind, seq, captions, settings, onSeq, onCaptions, onSettings, onError, onRefresh }: Props) {
+export default function SequenceView({ project, kind, seq, captions, settings, onSeq, onCaptions, onSettings, onError, onRefresh, onSetupPosting }: Props) {
   const tiktok = kind === "tiktok";
   const events = useMemo(() => new Map(project.events.map((e) => [e.id, e])), [project.events]);
   const items = seq.items.filter((i) => events.has(i.event_id));
@@ -405,7 +407,7 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
             {exportJob && <JobBar label="Export" job={exportJob} onCancel={() => api.cancelJob(exportJob.id)} files />}
           </section>
 
-          <PublishPanel project={project} onRefresh={onRefresh} onError={onError} />
+          <PublishPanel project={project} onRefresh={onRefresh} onError={onError} onSetup={onSetupPosting} />
 
           {selected && selectedEvent && (
             <section className="card seq-inspector">

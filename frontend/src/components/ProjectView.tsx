@@ -45,7 +45,7 @@ export default function ProjectView({ id, tab, onTab, onClose }: Props) {
   const [cursor, setCursor] = useState<number | null>(null);
   const [playhead, setPlayhead] = useState(0);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState<false | "all" | "accounts">(false);
   // Timelines and captions are edited here and saved in the background.
   const [seqs, setSeqs] = useState<Record<SeqKind, Sequence> | null>(null);
   const [captions, setCaptions] = useState<Cue[]>([]);
@@ -234,7 +234,7 @@ export default function ProjectView({ id, tab, onTab, onClose }: Props) {
         <button className="ghost" onClick={reanalyze} disabled={!!analyzing}>
           Re-analyze
         </button>
-        <button className="ghost" onClick={() => setShowSettings(true)}>
+        <button className="ghost" onClick={() => setShowSettings("all")}>
           Settings
         </button>
       </div>
@@ -271,6 +271,7 @@ export default function ProjectView({ id, tab, onTab, onClose }: Props) {
           onSettings={updateSettings}
           onError={setError}
           onRefresh={load}
+          onSetupPosting={() => setShowSettings("accounts")}
         />
       ) : (
         <>
@@ -373,6 +374,7 @@ export default function ProjectView({ id, tab, onTab, onClose }: Props) {
           projectId={id}
           time={selected ? selected.time : playhead}
           settings={settings}
+          focus={showSettings === "accounts" ? "accounts" : null}
           onClose={() => setShowSettings(false)}
           onSaved={(s, rerun) => {
             setSettings(s);

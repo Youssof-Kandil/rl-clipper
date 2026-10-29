@@ -3,16 +3,19 @@ import { api, STYLE_LABEL, type Settings, type VerticalStyle } from "../api";
 import AccountsSection from "./AccountsSection";
 
 interface Props {
-  projectId: string;
-  time: number;
+  /** Without a project (opened from the home page) there's no frame to preview regions on. */
+  projectId?: string;
+  time?: number;
   settings: Settings;
+  /** Scroll straight to a section, e.g. "accounts" from a Connect button. */
+  focus?: "accounts" | null;
   onClose: () => void;
   onSaved: (s: Settings, rerun: boolean) => void;
 }
 
 const ROI_LABELS = ["left", "top", "right", "bottom"];
 
-export default function SettingsDialog({ projectId, time, settings, onClose, onSaved }: Props) {
+export default function SettingsDialog({ projectId, time = 0, settings, focus, onClose, onSaved }: Props) {
   const [draft, setDraft] = useState<Settings>(settings);
   const [nonce, setNonce] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -105,7 +108,7 @@ export default function SettingsDialog({ projectId, time, settings, onClose, onS
               <input value={String(draft.demos_dir ?? "")} onChange={(e) => set("demos_dir", e.target.value)} placeholder="…\My Games\Rocket League\TAGame\Demos" />
             </label>
 
-            <AccountsSection draft={draft} set={set} />
+            <AccountsSection draft={draft} set={set} focus={focus === "accounts"} />
 
             <h3>Audio tracks in your recording</h3>
             <div className="row">
@@ -241,23 +244,31 @@ export default function SettingsDialog({ projectId, time, settings, onClose, onS
           </div>
           <div>
             <h3>Region preview</h3>
-            <img className="roi-preview" src={`/api/projects/${projectId}/frame?t=${time.toFixed(2)}&n=${nonce}`} alt="Frame with detection regions" />
-            <button className="small" onClick={applyPreview}>
-              Save & refresh preview
-            </button>
-            <p className="hint">Tip: open a clip whose tag is on screen, then check the orange box covers it.</p>
+            {projectId ? (
+              <>
+                <img className="roi-preview" src={`/api/projects/${projectId}/frame?t=${time.toFixed(2)}&n=${nonce}`} alt="Frame with detection regions" />
+                <button className="small" onClick={applyPreview}>
+                  Save & refresh preview
+                </button>
+                <p className="hint">Tip: open a clip whose tag is on screen, then check the orange box covers it.</p>
+              </>
+            ) : (
+              <p className="hint">Open a project's Settings to check the detection regions on a real frame.</p>
+            )}
           </div>
         </div>
         <div className="modal-actions">
           <button className="ghost" onClick={onClose}>
             Cancel
           </button>
-          <button onClick={() => save(false)} disabled={saving}>
+          <button className={projectId ? "" : "primary"} onClick={() => save(false)} disabled={saving}>
             Save
           </button>
-          <button className="primary" onClick={() => save(true)} disabled={saving}>
-            Save & re-analyze
-          </button>
+          {projectId && (
+            <button className="primary" onClick={() => save(true)} disabled={saving}>
+              Save & re-analyze
+            </button>
+          )}
         </div>
       </div>
     </div>

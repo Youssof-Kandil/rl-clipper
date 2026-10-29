@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { api, type Health } from "./api";
+import { api, type Health, type Settings } from "./api";
 import Home from "./components/Home";
 import ProjectView, { type Tab } from "./components/ProjectView";
+import SettingsDialog from "./components/SettingsDialog";
 
 const TABS: Tab[] = ["clips", "youtube", "tiktok"];
 
@@ -15,11 +16,19 @@ function readHash(): { id: string | null; tab: Tab } {
 export default function App() {
   const [route, setRoute] = useState(readHash());
   const [health, setHealth] = useState<Health | null>(null);
+  // Home-page Settings (a project has its own button); "accounts" scrolls to posting.
+  const [settingsOpen, setSettingsOpen] = useState<null | "all" | "accounts">(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const openSettings = async (focus: "all" | "accounts" = "all") => {
+    setSettings(await api.settings());
+    setSettingsOpen(focus);
+  };
+  const refreshHealth = () => api.health().then(setHealth).catch((e) => setHealth({ ok: false, error: String(e) }));
 
   useEffect(() => {
     const onHash = () => setRoute(readHash());
     window.addEventListener("hashchange", onHash);
-    api.health().then(setHealth).catch((e) => setHealth({ ok: false, error: String(e) }));
+    refreshHealth();
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
@@ -41,12 +50,31 @@ export default function App() {
           <span className="brand-ball" /> RL Clipper
         </button>
         <span className="topbar-sub">goals · saves · epic saves → shorts</span>
+        {!route.id && (
+          <button className="ghost small topbar-settings" onClick={() => openSettings()}>
+            Settings
+          </button>
+        )}
       </header>
       {health && !health.ok && <div className="banner error">Backend problem: {health.error}</div>}
       {route.id ? (
         <ProjectView id={route.id} tab={route.tab} onTab={setTab} onClose={() => open(null)} />
       ) : (
-        <Home onOpen={open} health={health} />
+        <Home onOpen={open} health={health} onSettings={openSettings} />
+      )}
+      {settingsOpen && settings && !route.id && (
+        <SettingsDialog
+          settings={settings}
+          focus={settingsOpen === "accounts" ? "accounts" : null}
+          onClose={() => {
+            setSettingsOpen(null);
+            refreshHealth(); // a Connect may have happened in the meantime
+          }}
+          onSaved={() => {
+            setSettingsOpen(null);
+            refreshHealth();
+          }}
+        />
       )}
       <footer className="credit">
         RL Clipper · created by{" "}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type Accounts, type Platform, type Settings } from "../api";
 
 const GUIDE = "https://github.com/Youssof-Kandil/rl-clipper/blob/main/docs/publishing.md";
@@ -11,13 +11,20 @@ const PLATFORMS: { id: Platform; label: string; idKey: string; secretKey: string
 interface Props {
   draft: Settings;
   set: (k: string, v: Settings[string]) => void;
+  /** Opened from a "Connect" / "Set up posting" button: scroll here and highlight. */
+  focus?: boolean;
 }
 
 /** Settings → Accounts: your own Google / TikTok app keys, and connecting your accounts. */
-export default function AccountsSection({ draft, set }: Props) {
+export default function AccountsSection({ draft, set, focus }: Props) {
   const [accounts, setAccounts] = useState<Accounts | null>(null);
   const [waiting, setWaiting] = useState<Platform | null>(null);
   const [error, setError] = useState("");
+  const here = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (focus) here.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [focus]);
 
   const refresh = () => api.accounts().then(setAccounts).catch(() => {});
   useEffect(() => {
@@ -52,7 +59,7 @@ export default function AccountsSection({ draft, set }: Props) {
   };
 
   return (
-    <>
+    <div ref={here} id="accounts" className={`accounts-section ${focus ? "focused" : ""}`}>
       <h3>Accounts (posting)</h3>
       <p className="hint">
         Post exports straight to YouTube and TikTok with your own developer apps.{" "}
@@ -102,6 +109,6 @@ export default function AccountsSection({ draft, set }: Props) {
         );
       })}
       {error && <div className="banner error">{error}</div>}
-    </>
+    </div>
   );
 }

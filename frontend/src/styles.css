@@ -57,6 +57,14 @@ label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--t
 .brand { background: none; border: none; font-size: 17px; font-weight: 750; display: flex; align-items: center; gap: 8px; padding: 0; }
 .brand-ball { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffc58a, var(--accent)); box-shadow: 0 0 12px #ff8a1f88; }
 .topbar-sub { color: var(--muted); font-size: 12px; }
+.topbar-settings { margin-left: auto; }
+.checks li .check-action { justify-self: end; }
+.posting p { margin: 6px 0 12px; font-size: 13px; line-height: 1.45; }
+.posting-accounts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 640px) { .posting-accounts { grid-template-columns: 1fr; } }
+.posting-account { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
+.posting-account .seq-chip { font-size: 12px; padding: 4px 7px; }
+.checks li.has-action { grid-template-columns: 20px 190px minmax(0, 1fr) auto; }
 
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
 .banner { padding: 10px 14px; border-radius: 8px; margin: 8px 0; }
@@ -250,6 +258,9 @@ label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--t
 .export-dest .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; min-width: 0; }
 .export-dest .grow { flex: 1; }
 /* Settings → Accounts */
+.accounts-section { scroll-margin-top: 12px; border-radius: 10px; }
+.accounts-section.focused { outline: 2px solid var(--accent); outline-offset: 8px; animation: acct-flash 1.6s ease-out 1; }
+@keyframes acct-flash { from { background: rgba(255, 138, 31, 0.12); } to { background: transparent; } }
 fieldset.account { grid-template-columns: 1fr 1fr; }
 fieldset.account legend { gap: 8px; font-weight: 600; }
 fieldset.account .full { grid-column: 1 / -1; }
