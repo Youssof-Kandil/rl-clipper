@@ -34,3 +34,5 @@ package = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Tests import the app as `app.*` from backend/, however pytest is started.
+pythonpath = ["."]
