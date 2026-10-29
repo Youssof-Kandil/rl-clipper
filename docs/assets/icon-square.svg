@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#07101f"/>
+  <!-- viewfinder -->
+  <g fill="none" stroke="#f4f6fa" stroke-width="38" stroke-linecap="round">
+    <path d="M180 380 V270 A90 90 0 0 1 270 180 H380"/>
+    <path d="M644 180 H754 A90 90 0 0 1 844 270 V380"/>
+    <path d="M180 644 V754 A90 90 0 0 0 270 844 H380"/>
+    <path d="M844 644 V754 A90 90 0 0 1 754 844 H644"/>
+  </g>
+  <circle cx="760" cy="264" r="24" fill="#ff3b4e"/>
+  <!-- ball: white with three dark panels -->
+  <g transform="translate(668 380)">
+    <circle r="84" fill="#f4f6fa"/>
+    <g fill="#07101f" stroke="#07101f" stroke-width="6" stroke-linejoin="round">
+      <path d="M-41.1 -49 A64 64 0 0 1 41.1 -49 L20.6 -24.5 A32 32 0 0 0 -20.6 -24.5 Z" transform="rotate(20)"/>
+      <path d="M-41.1 -49 A64 64 0 0 1 41.1 -49 L20.6 -24.5 A32 32 0 0 0 -20.6 -24.5 Z" transform="rotate(140)"/>
+      <path d="M-41.1 -49 A64 64 0 0 1 41.1 -49 L20.6 -24.5 A32 32 0 0 0 -20.6 -24.5 Z" transform="rotate(260)"/>
+    </g>
+    <circle r="13" fill="#07101f"/>
+  </g>
+  <!-- car, nose up toward the ball -->
+  <g transform="translate(330 590) rotate(-16)">
+    <!-- boost -->
+    <g fill="#2ea8ff">
+      <path d="M0 20 L-120 40 L-116 56 L0 46 Z"/>
+      <path d="M2 54 L-112 96 L-104 110 L10 72 Z"/>
+      <path d="M16 78 L-76 146 L-64 156 L32 90 Z"/>
+    </g>
+    <!-- spoiler -->
+    <path d="M-36 -22 L52 -32 L48 -18 L-28 -10 Z M8 -16 L28 -18 L44 18 L26 20 Z" fill="#f4f6fa"/>
+    <!-- body -->
+    <path d="M6 62 L10 22 L74 6 L148 -38 Q172 -50 198 -42 L250 -22 L312 -18 Q334 -14 340 6 L342 38 L334 62 Z" fill="#f4f6fa"/>
+    <!-- window -->
+    <path d="M132 -10 L162 -30 Q174 -36 188 -32 L230 -16 L228 -8 L132 0 Z" fill="#07101f"/>
+    <!-- wheels -->
+    <circle cx="84" cy="62" r="50" fill="#07101f"/>
+    <circle cx="84" cy="62" r="37" fill="#f4f6fa"/>
+    <circle cx="84" cy="62" r="18" fill="#07101f"/>
+    <circle cx="278" cy="62" r="48" fill="#07101f"/>
+    <circle cx="278" cy="62" r="35" fill="#f4f6fa"/>
+    <circle cx="278" cy="62" r="17" fill="#07101f"/>
+  </g>
+</svg>
