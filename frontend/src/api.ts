@@ -165,6 +165,35 @@ export interface Post {
   forced_private?: boolean;
   mode?: "inbox" | "direct";
   status?: string;
+  studio_url?: string;
+  related?: { id: string; title: string } | null;
+}
+
+/** One of the connected channel's uploads (to link from a Short). */
+export interface YouTubeVideo {
+  id: string;
+  title: string;
+  published: string;
+  seconds: number;
+  views: number;
+  privacy: string;
+  short: boolean;
+  thumb: string;
+}
+
+/** YouTube's other upload details (see youtube.build_metadata). */
+export interface YouTubeOptions {
+  category: string;
+  language: string;
+  audio_language: string;
+  made_for_kids: boolean;
+  synthetic: boolean;
+  license: "youtube" | "creativeCommon";
+  embeddable: boolean;
+  public_stats: boolean;
+  recording_date?: string;
+  related?: { id: string; title: string } | null;
+  related_in_description: boolean;
 }
 
 export interface PublishRequest {
@@ -175,6 +204,8 @@ export interface PublishRequest {
   tags: string[];
   privacy: string;
   publish_at: string | null;
+  youtube?: YouTubeOptions;
+  notify?: boolean;
 }
 
 /** What this machine can do (only ffmpeg is required; the rest have fallbacks). */
@@ -271,6 +302,7 @@ export const api = {
   disconnect: (platform: Platform) => call<Accounts>("DELETE", `/api/accounts/${platform}`),
   /** Opens Google / TikTok sign-in in a new tab; poll accounts() to see it finish. */
   connect: (platform: Platform) => window.open(`/api/auth/${platform}/start`, "_blank", "noopener"),
+  youtubeVideos: () => call<{ videos: YouTubeVideo[]; suggested: string | null }>("GET", "/api/youtube/videos"),
   tiktokCreatorInfo: () =>
     call<{ creator_nickname?: string; privacy_level_options?: string[] }>("GET", "/api/tiktok/creator-info"),
   exportsList: (id: string) => call<ExportFile[]>("GET", `/api/projects/${id}/exports`),

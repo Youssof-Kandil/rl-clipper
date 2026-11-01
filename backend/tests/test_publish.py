@@ -110,6 +110,54 @@ def test_youtube_metadata():
     assert m["status"]["privacyStatus"] == "private" and m["status"]["publishAt"] == "2026-11-01T18:00:00Z"
 
 
+def test_youtube_metadata_options():
+    m = youtube.build_metadata("Save", "Nice one", [], "public", None, short=True, options={
+        "category": "24", "language": "en", "audio_language": "en-GB", "made_for_kids": False,
+        "license": "creativeCommon", "embeddable": False, "public_stats": True, "synthetic": False,
+        "recording_date": "2026-10-28T00:00:00Z", "related": {"id": "LONG1", "title": "Ranked grind"}})
+    s = m["snippet"]
+    assert s["categoryId"] == "24" and s["defaultLanguage"] == "en" and s["defaultAudioLanguage"] == "en-GB"
+    assert s["description"] == "▶ Full video: Ranked grind\nhttps://youtu.be/LONG1\n\nNice one"
+    assert m["status"] | {} == {"privacyStatus": "public", "selfDeclaredMadeForKids": False,
+                                "license": "creativeCommon", "embeddable": False, "publicStatsViewable": True,
+                                "containsSyntheticMedia": False}
+    assert m["recordingDetails"] == {"recordingDate": "2026-10-28T00:00:00Z"}
+    m = youtube.build_metadata("a", "b", [], "public", None, False,
+                               {"category": "999", "related": {"id": "X"}, "related_in_description": False})
+    assert m["snippet"]["categoryId"] == "20" and m["snippet"]["description"] == "b" and "recordingDetails" not in m
+
+
+def test_youtube_my_videos_suggests_busiest_long_video(monkeypatch):
+    connect("youtube", expires_in=10**9)
+    monkeypatch.setattr(youtube.time, "time", lambda: 1793491200.0)  # 2026-11-01
+
+    def video(vid, title, published, duration, views, privacy="public"):
+        return {"id": vid, "snippet": {"title": title, "publishedAt": published, "thumbnails": {}},
+                "contentDetails": {"duration": duration}, "statistics": {"viewCount": str(views)},
+                "status": {"privacyStatus": privacy}}
+
+    def handler(req: httpx.Request):
+        path = req.url.path.rsplit("/", 1)[1]
+        if path == "channels":
+            assert req.url.params["mine"] == "true"
+            return httpx.Response(200, json={"items": [{"contentDetails": {"relatedPlaylists": {"uploads": "UU1"}}}]})
+        if path == "playlistItems":
+            assert req.url.params["playlistId"] == "UU1"
+            return httpx.Response(200, json={"items": [{"contentDetails": {"videoId": i}} for i in "abcd"]})
+        return httpx.Response(200, json={"items": [
+            video("a", "Old hit", "2025-01-01T00:00:00Z", "PT12M", 3000),
+            video("b", "New one", "2026-10-25T00:00:00Z", "PT1H2M3S", 900),
+            video("c", "A short", "2026-10-30T00:00:00Z", "PT45S", 50000),
+            video("d", "Unlisted", "2026-10-31T00:00:00Z", "PT10M", 99999, "unlisted")]})
+
+    res = youtube.my_videos(SETTINGS, mock(handler))
+    assert [v["id"] for v in res["videos"]] == ["d", "c", "b", "a"]
+    assert res["videos"][2]["seconds"] == 3723 and res["videos"][1]["short"]
+    assert res["suggested"] == "b"  # most views per day among public long videos
+    res = youtube.my_videos(SETTINGS, mock(handler), match="old")
+    assert res["suggested"] == "a"  # titles matching the game win when there are any
+
+
 def test_youtube_resumable_upload(tmp_path, monkeypatch):
     monkeypatch.setattr(youtube, "CHUNK", 256 * 1024)
     f = tmp_path / "clip.mp4"

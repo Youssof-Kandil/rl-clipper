@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { api, type Accounts, type ExportFile, type Platform, type Project } from "../api";
+import { api, type Accounts, type ExportFile, type Platform, type Project, type YouTubeOptions } from "../api";
 import JobBar from "./JobBar";
+import YouTubeDetails, { YOUTUBE_DEFAULTS } from "./YouTubeDetails";
 
 const LABEL: Record<Platform, string> = { youtube: "YouTube", tiktok: "TikTok" };
 const TITLE_MAX: Record<Platform, number> = { youtube: 100, tiktok: 2200 };
@@ -24,6 +25,15 @@ function remember(key: string, value?: string): string {
   }
 }
 
+/** Last used YouTube details (the related video is per post, so it isn't kept). */
+function savedYouTube(): YouTubeOptions {
+  try {
+    return { ...YOUTUBE_DEFAULTS, ...JSON.parse(remember("youtube.options") || "{}"), related: null, recording_date: undefined };
+  } catch {
+    return YOUTUBE_DEFAULTS;
+  }
+}
+
 const mb = (b: number) => `${(b / 1e6).toFixed(0)} MB`;
 
 interface Props {
@@ -44,6 +54,8 @@ export default function PublishPanel({ project, onRefresh, onError, onSetup }: P
   const [tags, setTags] = useState("");
   const [privacy, setPrivacy] = useState("private");
   const [schedule, setSchedule] = useState("");
+  const [ytOptions, setYtOptions] = useState<YouTubeOptions>(YOUTUBE_DEFAULTS);
+  const [notify, setNotify] = useState(true);
   const [tiktokOptions, setTiktokOptions] = useState<{ name: string; options: string[] } | null>(null);
 
   const exportDone = ["export_youtube", "export_tiktok", "export"].map((k) => project.job_status[k]?.status).join();
@@ -70,6 +82,8 @@ export default function PublishPanel({ project, onRefresh, onError, onSetup }: P
     setTags(remember("tags.youtube") || "Rocket League, RL, gaming, shorts");
     setPrivacy(platform === "youtube" ? remember("privacy.youtube") || "private" : "");
     setSchedule("");
+    setYtOptions(savedYouTube());
+    setNotify(remember("youtube.notify") !== "false");
     setTiktokOptions(null);
     if (platform === "tiktok" && accounts?.tiktok.direct_post) {
       try {
@@ -90,6 +104,9 @@ export default function PublishPanel({ project, onRefresh, onError, onSetup }: P
     if (platform === "youtube") {
       remember("tags.youtube", tags);
       remember("privacy.youtube", privacy);
+      const { related: _r, recording_date: _d, ...keep } = ytOptions;
+      remember("youtube.options", JSON.stringify(keep));
+      remember("youtube.notify", String(notify));
     }
     try {
       await api.publish(project.id, {
@@ -100,6 +117,7 @@ export default function PublishPanel({ project, onRefresh, onError, onSetup }: P
         tags: platform === "youtube" ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
         privacy,
         publish_at: platform === "youtube" && schedule ? new Date(schedule).toISOString() : null,
+        ...(platform === "youtube" ? { youtube: ytOptions, notify } : {}),
       });
       setForm(null);
       onRefresh();
@@ -193,6 +211,14 @@ export default function PublishPanel({ project, onRefresh, onError, onSetup }: P
                   <input type="datetime-local" value={schedule} onChange={(e) => setSchedule(e.target.value)} />
                 </label>
               </div>
+              <YouTubeDetails
+                value={ytOptions}
+                onChange={setYtOptions}
+                notify={notify}
+                onNotify={setNotify}
+                short={(form.file.height ?? 0) > (form.file.width ?? 0) && (form.file.duration ?? 0) <= 180}
+                onError={onError}
+              />
               <p className="hint">
                 {schedule
                   ? "Uploads now as private and goes public at that time, even if your PC is off."
@@ -253,6 +279,15 @@ export default function PublishPanel({ project, onRefresh, onError, onSetup }: P
                 <a href={post.url} target="_blank" rel="noreferrer">
                   {post.publish_at ? `scheduled for ${new Date(post.publish_at).toLocaleString()}` : post.privacy}
                 </a>
+              )}
+              {post.platform === "youtube" && post.studio_url && (
+                <>
+                  {" · "}
+                  <a href={post.studio_url} target="_blank" rel="noreferrer" title={post.related ? `In Studio: Related video → ${post.related.title}` : "Edit in YouTube Studio"}>
+                    {post.short && post.related ? "Set related video" : "Open in Studio"}
+                  </a>
+                  {post.short && post.related && <span className="muted"> ({post.related.title})</span>}
+                </>
               )}
               {post.forced_private && <span className="note"> (kept private by YouTube: your Google project isn't audited yet)</span>}
             </li>

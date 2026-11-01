@@ -423,6 +423,8 @@ class PublishIn(BaseModel):
     tags: list[str] = []
     privacy: str = "private"  # youtube: private/unlisted/public; tiktok direct: a creator_info option
     publish_at: str | None = None  # youtube: ISO 8601 UTC time to go public
+    youtube: dict = {}  # youtube upload details: see youtube.build_metadata's options
+    notify: bool = True  # youtube: notify subscribers
 
 
 class CaptionsIn(BaseModel):
@@ -769,6 +771,15 @@ def tiktok_creator_info() -> dict:
         raise HTTPException(400, str(exc)) from None
 
 
+@app.get("/api/youtube/videos")
+def youtube_videos() -> dict:
+    """The connected channel's uploads, to pick a Short's related video from."""
+    try:
+        return youtube.my_videos(load_settings())
+    except PublishError as exc:
+        raise HTTPException(400, str(exc)) from None
+
+
 @app.get("/api/projects/{pid}/exports")
 def list_exports(pid: str) -> list[dict]:
     """This project's exported files that still exist, newest first, with their shape.
@@ -821,10 +832,12 @@ def publish(pid: str, body: PublishIn) -> dict:
     def work(job: jobs.Job) -> dict:
         if platform == "youtube":
             short = vertical and info["duration"] <= youtube.SHORTS_MAX_SECONDS
-            meta = youtube.build_metadata(body.title, body.description, body.tags, body.privacy, body.publish_at, short)
-            res = youtube.upload(body.file, meta, settings, job.update, lambda: job.cancelled)
+            meta = youtube.build_metadata(body.title, body.description, body.tags, body.privacy, body.publish_at,
+                                          short, body.youtube)
+            res = youtube.upload(body.file, meta, settings, job.update, lambda: job.cancelled, notify=body.notify)
             post = {"url": res["url"], "remote_id": res["id"], "privacy": res["privacy"], "short": short,
-                    "publish_at": body.publish_at,
+                    "publish_at": body.publish_at, "studio_url": youtube.studio_url(res["id"]),
+                    "related": (body.youtube.get("related") or None),
                     # Unaudited Google projects get every upload locked to private.
                     "forced_private": res["privacy"] == "private" and body.privacy != "private" and not body.publish_at}
         else:

@@ -273,6 +273,22 @@ fieldset.account .full { grid-column: 1 / -1; }
 .publish-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 .publish-form textarea { min-height: 70px; resize: vertical; }
 .publish-form .count { font-size: 11px; color: var(--muted); text-align: right; }
+fieldset.yt-related { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 0; }
+fieldset.yt-related .hint { margin: 0; }
+.yt-chip { background: var(--panel-2, #1b2230); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+.yt-videos { list-style: none; margin: 0; padding: 0; width: 100%; max-height: 280px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.yt-videos li { border-top: 1px solid var(--line); }
+.yt-videos li:first-child { border-top: none; }
+.yt-videos li.muted { padding: 8px; font-size: 12px; }
+.yt-videos button { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: none; border: none; border-radius: 0; padding: 6px 8px; }
+.yt-videos button:hover { background: #ffffff0d; }
+.yt-videos img, .yt-thumb { width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; flex: none; background: #ffffff10; }
+.yt-title { display: flex; flex-direction: column; gap: 2px; font-size: 13px; min-width: 0; }
+.yt-title .muted { font-size: 11px; }
+.yt-badge { align-self: flex-start; font-size: 10px; font-weight: 700; color: #07101f; background: var(--accent); border-radius: 4px; padding: 1px 5px; vertical-align: middle; }
+.yt-more summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.yt-more[open] summary { margin-bottom: 8px; }
+.yt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-bottom: 8px; }
 .posts { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; }
 .posts li { padding: 3px 0; }
 .note { font-size: 12px; color: var(--goal); }
