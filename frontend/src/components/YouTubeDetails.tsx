@@ -101,7 +101,7 @@ export default function YouTubeDetails({ value, onChange, notify, onNotify, shor
             </ul>
           </>
         )}
-        {value.related && (
+        {value.related && !short && (
           <label className="check">
             <input type="checkbox" checked={value.related_in_description} onChange={(e) => set({ related_in_description: e.target.checked })} /> Also put
             the link at the top of the description
@@ -109,8 +109,9 @@ export default function YouTubeDetails({ value, onChange, notify, onNotify, shor
         )}
         {short && (
           <p className="hint">
-            YouTube doesn't let apps set a Short's <b>Related video</b> directly. After posting, click <b>Set related video</b> in the list
-            below: it opens the Short in YouTube Studio, where it's one click.
+            YouTube doesn't let apps set a Short's <b>Related video</b>. After posting, click <b>Set related video</b> in the list below: it
+            opens the Short in YouTube Studio, where you pick it with the ✎ next to Related video. (Links in Shorts descriptions aren't
+            clickable, so RL Clipper doesn't add one.)
           </p>
         )}
       </fieldset>

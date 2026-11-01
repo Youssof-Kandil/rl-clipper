@@ -142,7 +142,8 @@ Google's Branding page and TikTok both want a privacy policy and terms of servic
 ### YouTube extras
 
 - **Related video:** click **Choose from my channel** to list your uploads (Shorts hidden unless you tick *Show Shorts too*). **Use suggested** picks your public Rocket League video getting the most views per day; any other video is one click.
-  - YouTube's API has no way for apps to set a Short's *Related video*. RL Clipper puts the link at the top of the description (you can untick that). After posting, the history line shows **Set related video**: it opens the Short in YouTube Studio, where you pick it with one click.
+  - YouTube's API has no way for apps to set a Short's *Related video*. After posting, the history line shows **Set related video**: it opens the Short in YouTube Studio. Click the ✎ on **Related video**, pick the video, and **Save**.
+  - Links in Shorts descriptions aren't clickable, so for Shorts the link isn't added there. For regular (16:9) videos, the link goes at the top of the description (you can untick that).
 - **More details:** category (Gaming by default), video and audio language, recording date, made for kids, altered or synthetic content, license, notify subscribers, allow embedding, and show likes. Your choices are remembered for the next post.
 - **Game title** can't be set by apps either. YouTube fills it in automatically for Gaming videos; change it in Studio if it's wrong.
 - Listing your videos uses the "View your YouTube account" permission RL Clipper already asks for when you connect. If you connected before it was added and the list fails, click **Reconnect** in Settings → Accounts.

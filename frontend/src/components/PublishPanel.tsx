@@ -34,6 +34,9 @@ function savedYouTube(): YouTubeOptions {
   }
 }
 
+/** YouTube files a vertical video of 3 minutes or less as a Short. */
+const isShort = (f: ExportFile) => (f.height ?? 0) > (f.width ?? 0) && (f.duration ?? 0) <= 180;
+
 const mb = (b: number) => `${(b / 1e6).toFixed(0)} MB`;
 
 interface Props {
@@ -117,7 +120,10 @@ export default function PublishPanel({ project, onRefresh, onError, onSetup }: P
         tags: platform === "youtube" ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
         privacy,
         publish_at: platform === "youtube" && schedule ? new Date(schedule).toISOString() : null,
-        ...(platform === "youtube" ? { youtube: ytOptions, notify } : {}),
+        // Links in Shorts descriptions aren't clickable, so only regular videos get one.
+        ...(platform === "youtube"
+          ? { youtube: { ...ytOptions, related_in_description: !isShort(file) && ytOptions.related_in_description }, notify }
+          : {}),
       });
       setForm(null);
       onRefresh();
@@ -216,7 +222,7 @@ export default function PublishPanel({ project, onRefresh, onError, onSetup }: P
                 onChange={setYtOptions}
                 notify={notify}
                 onNotify={setNotify}
-                short={(form.file.height ?? 0) > (form.file.width ?? 0) && (form.file.duration ?? 0) <= 180}
+                short={isShort(form.file)}
                 onError={onError}
               />
               <p className="hint">
