@@ -273,6 +273,9 @@ fieldset.account .full { grid-column: 1 / -1; }
 .publish-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 .publish-form textarea { min-height: 70px; resize: vertical; }
 .publish-form .count { font-size: 11px; color: var(--muted); text-align: right; }
+.export-name { margin: 4px 0 8px; }
+.export-name .row { flex-wrap: nowrap; }
+.export-name input { flex: 1; min-width: 0; }
 fieldset.yt-related { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 0; }
 fieldset.yt-related .hint { margin: 0; }
 .yt-chip { background: var(--panel-2, #1b2230); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; }

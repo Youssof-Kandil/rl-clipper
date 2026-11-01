@@ -80,6 +80,8 @@ export interface SeqItem {
 export interface Sequence {
   items: SeqItem[];
   captions: boolean;
+  /** File name for "Export as one video" (without .mp4). */
+  name?: string;
 }
 
 /** A caption line, in source-video seconds (shared by both timelines). */

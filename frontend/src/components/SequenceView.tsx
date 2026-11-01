@@ -282,6 +282,7 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
       return;
     }
     try {
+      await api.saveSequence(project.id, kind, seq); // the name may have changed a moment ago
       await api.exportSequence(project.id, kind, mode);
       onRefresh();
     } catch (e) {
@@ -317,12 +318,17 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
     }
     setAskFolder(null);
     try {
+      await api.saveSequence(project.id, kind, seq);
       await api.exportSequence(project.id, kind, mode);
       onRefresh();
     } catch (e) {
       onError(String((e as Error).message));
     }
   };
+
+  // What "Export as one video" is called when no name is typed (matches the backend).
+  const stem = (project.source.split(/[\\/]/).pop() ?? "").replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "clip";
+  const defaultName = `${stem}_${kind}_compiled`;
 
   const inSeq = new Set(seq.items.map((i) => i.event_id));
   const ticked = project.events.filter((e) => e.selected && !inSeq.has(e.id));
@@ -371,6 +377,18 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
             <label className="check">
               <input type="checkbox" checked={showCaptions} onChange={(e) => onSeq({ ...seq, captions: e.target.checked })} />
               Burn in captions
+            </label>
+            <label className="export-name">
+              Video name (for Export as one video)
+              <span className="row">
+                <input
+                  value={seq.name ?? ""}
+                  placeholder={defaultName}
+                  maxLength={120}
+                  onChange={(e) => onSeq({ ...seq, name: e.target.value })}
+                />
+                <span className="muted">.mp4</span>
+              </span>
             </label>
             <div className="row">
               <button className="primary" onClick={() => runExport("compiled")} disabled={!items.length || !!exporting}>

@@ -26,6 +26,16 @@ def test_clean_clamps_trims_and_drops_unknown_events():
         ("x", 290.0, 305.0, 1.0, "focus45"),  # order kept, trimmed into the event's window
         ("y", 95.0, 96.0, 0.5, None),
     ]
+    assert "name" not in seq
+
+
+@pytest.mark.parametrize("typed,saved", [
+    ("Best saves!  ", "Best saves!"), ("a/b:c?.mp4", "a b c"), ("con", "_con"), ("...", None),
+    ("Épic montage. ", "Épic montage"), ("", None),
+])
+def test_clean_keeps_a_safe_export_name(typed, saved):
+    seq = sequences.clean(_project(), {"items": [], "name": typed}, SETTINGS)
+    assert seq.get("name") == saved
 
 
 def test_prune_repoints_items_after_reanalysis():

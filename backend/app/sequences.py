@@ -44,7 +44,11 @@ def clean(project: dict, seq: dict, settings: dict) -> dict:
             "crop_x": round(min(max(float(raw.get("crop_x", 0.5)), 0.0), 1.0), 4),
             "style": style if style in media.VERTICAL_STYLES else None,
         })
-    return {"items": items, "captions": bool(seq.get("captions", False))}
+    out = {"items": items, "captions": bool(seq.get("captions", False))}
+    name = media.file_name(str(seq.get("name") or ""))
+    if name:
+        out["name"] = name  # the compiled export's file name
+    return out
 
 
 def prune(project: dict, old_events: list[dict] | None = None) -> None:

@@ -263,7 +263,7 @@ def start_sequence_export(pid: str, kind: str, mode: str) -> jobs.Job:
                     files.append({"path": str(target), "name": target.name})
             if mode == "compiled":
                 job.update(0.97, "Joining clips")
-                target = _unique(out_dir / f"{stem}_{kind}_compiled.mp4")
+                target = _unique(out_dir / f"{seq.get('name') or f'{stem}_{kind}_compiled'}.mp4")
                 media.concat(parts, str(target), project["info"]["audio_streams"])
                 files.append({"path": str(target), "name": target.name})
         finally:
@@ -405,6 +405,7 @@ class ExportIn(BaseModel):
 class SequenceIn(BaseModel):
     items: list[dict]
     captions: bool = False
+    name: str = ""  # file name for the compiled export
 
 
 class SequenceExportIn(BaseModel):

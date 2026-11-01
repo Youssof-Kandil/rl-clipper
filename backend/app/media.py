@@ -378,6 +378,20 @@ def safe_name(text: str) -> str:
     return re.sub(r"[^A-Za-z0-9_-]+", "_", text).strip("_") or "clip"
 
 
+_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+
+
+def file_name(text: str) -> str:
+    """A name the user typed, made safe as a file name on every OS (keeps spaces and
+    accents; drops characters Windows forbids). Empty if nothing usable is left."""
+    t = re.sub(r"\.mp4\s*$", "", text.strip(), flags=re.I)
+    t = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', " ", t)
+    t = re.sub(r"\s+", " ", t).strip().rstrip(". ")[:120].rstrip(". ")
+    if t.split(".")[0].upper() in _RESERVED:
+        t = f"_{t}"
+    return t
+
+
 def mmss(t: float) -> str:
     t = max(int(t), 0)
     h, rem = divmod(t, 3600)

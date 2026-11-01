@@ -9,6 +9,8 @@ const TITLE_MAX: Record<Platform, number> = { youtube: 100, tiktok: 2200 };
 /** "…_tiktok_02_epic_save_05-01.mp4" -> "Epic save"; compiled videos -> highlights. */
 function defaultTitle(name: string): string {
   const n = name.toLowerCase();
+  // A video you named yourself: use that name.
+  if (!/_(tiktok|youtube)_|_(goal|save|epic_save)_\d/.test(n)) return name.replace(/\.mp4$/i, "").replace(/_/g, " ");
   if (n.includes("compiled")) return "Rocket League highlights";
   if (n.includes("epic_save")) return "Epic save";
   if (n.includes("goal")) return "Goal";
