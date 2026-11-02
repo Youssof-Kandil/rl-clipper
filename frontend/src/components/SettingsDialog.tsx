@@ -225,6 +225,23 @@ export default function SettingsDialog({ projectId, time = 0, settings, focus, o
                 <input type="number" min={1} max={16} value={num("caption_max_words")} onChange={(e) => set("caption_max_words", Number(e.target.value))} />
               </label>
             </div>
+            <h3>Sound effects</h3>
+            <label>
+              Freesound API key
+              <input
+                value={String(draft.freesound_api_key ?? "")}
+                onChange={(e) => set("freesound_api_key", e.target.value)}
+                placeholder="Paste the key from freesound.org/apiv2/apply"
+              />
+            </label>
+            <p className="hint">
+              Lets you search Freesound for sound effects (bruh, fart, boom…) from a clip's Effects &amp; sounds panel. Free: make an account, then get a key at{" "}
+              <a href="https://freesound.org/apiv2/apply" target="_blank" rel="noreferrer">
+                freesound.org/apiv2/apply
+              </a>
+              .
+            </p>
+
             <label>
               Export size
               <select value={String(draft.export_quality ?? "balanced")} onChange={(e) => set("export_quality", e.target.value)}>

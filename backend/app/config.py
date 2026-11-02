@@ -82,6 +82,8 @@ DEFAULT_SETTINGS: dict = {
     # TikTok: post directly instead of sending a draft to your inbox. Needs the
     # video.publish scope and TikTok's audit, or posts are forced to private.
     "tiktok_direct_post": False,
+    # Freesound API key for searching sound effects (free: https://freesound.org/apiv2/apply).
+    "freesound_api_key": "",
     # Rocket League replays: matched to the recording by start time and used instead of
     # on-screen detection for every match that has one. Empty = auto-detect.
     "use_replays": True,

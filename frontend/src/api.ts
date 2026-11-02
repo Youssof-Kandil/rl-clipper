@@ -75,6 +75,60 @@ export interface SeqItem {
   end: number;
   crop_x: number;
   style: VerticalStyle | null;
+  /** Hits at points in the clip (source-video seconds, like start/end). */
+  effects?: EffectMarker[];
+  sounds?: SoundMarker[];
+}
+
+export type EffectType = "flash" | "shake" | "impact" | "zoom" | "glitch" | "bw";
+
+export const EFFECT_LABEL: Record<EffectType, string> = {
+  flash: "Flash",
+  shake: "Shake",
+  impact: "Impact",
+  zoom: "Zoom punch",
+  glitch: "Glitch",
+  bw: "Black & white",
+};
+
+/** How long each effect lasts from its marker (matches media.EFFECTS). */
+export const EFFECT_SECONDS: Record<EffectType, number> = { flash: 0.25, shake: 0.4, impact: 0.4, zoom: 0.5, glitch: 0.3, bw: 0.6 };
+
+export interface EffectMarker {
+  id: string;
+  t: number;
+  type: EffectType;
+  /** 0.2-1 */
+  strength: number;
+}
+
+export interface SoundMarker {
+  id: string;
+  t: number;
+  /** A file name in the sound library. */
+  sound: string;
+  /** 0-2 */
+  volume: number;
+}
+
+/** A sound in the library (data/sounds). */
+export interface Sound {
+  name: string;
+  label: string;
+  seconds: number;
+  credit?: { source: string; title: string; user: string; license: string; url: string } | null;
+}
+
+/** A Freesound search result. */
+export interface FreesoundResult {
+  id: number;
+  name: string;
+  user: string;
+  license: string;
+  seconds: number;
+  downloads: number;
+  preview: string;
+  url: string;
 }
 
 export interface Sequence {
@@ -311,7 +365,19 @@ export const api = {
   publish: (id: string, req: PublishRequest) => call<Job>("POST", `/api/projects/${id}/publish`, req),
   settings: () => call<Settings>("GET", "/api/settings"),
   saveSettings: (s: Settings) => call<Settings>("PUT", "/api/settings", s),
+  sounds: () => call<Sound[]>("GET", "/api/sounds"),
+  uploadSound: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return call<Sound>("POST", "/api/sounds", form);
+  },
+  deleteSound: (name: string) => call("DELETE", `/api/sounds/${encodeURIComponent(name)}`),
+  searchSounds: (q: string, page = 1) =>
+    call<{ results: FreesoundResult[]; count: number; more: boolean }>("GET", `/api/sounds/search?q=${encodeURIComponent(q)}&page=${page}`),
+  addFreesound: (id: number) => call<Sound>("POST", "/api/sounds/freesound", { id }),
 };
+
+export const soundUrl = (name: string) => `/api/sounds/${encodeURIComponent(name)}`;
 
 export function fmt(t: number, decimals = false): string {
   const sign = t < 0 ? "-" : "";

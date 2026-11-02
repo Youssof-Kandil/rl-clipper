@@ -2,7 +2,7 @@ import subprocess
 
 import pytest
 
-from app import captions, media, sequences
+from app import captions, media, sequences, sounds
 
 SETTINGS = {"pre_seconds": 10, "post_seconds": 10}
 
@@ -36,6 +36,56 @@ def test_clean_clamps_trims_and_drops_unknown_events():
 def test_clean_keeps_a_safe_export_name(typed, saved):
     seq = sequences.clean(_project(), {"items": [], "name": typed}, SETTINGS)
     assert seq.get("name") == saved
+
+
+def test_clean_keeps_valid_markers(tmp_path, monkeypatch):
+    monkeypatch.setattr(sounds, "USER_DIR", tmp_path)
+    (tmp_path / "boom.wav").write_bytes(b"")
+    seq = sequences.clean(_project(), {"items": [{"id": "x", "event_id": "b", "start": 292, "end": 305, "effects": [
+        {"id": "e1", "t": 301, "type": "impact", "strength": 5},
+        {"t": 250, "type": "zoom"},  # before the event's window: pulled to its start
+        {"t": 300, "type": "explode"},
+        "junk",
+    ], "sounds": [
+        {"id": "s1", "t": 300.5, "sound": "boom.wav", "volume": 9},
+        {"t": 300, "sound": "gone.wav"},
+        {"t": 300, "sound": "../boom.wav"},
+    ]}]}, SETTINGS)
+    item = seq["items"][0]
+    assert [(e["type"], e["t"], e["strength"]) for e in item["effects"]] == [("impact", 301.0, 1.0), ("zoom", 290.0, 0.7)]
+    assert item["effects"][0]["id"] == "e1"
+    assert [(s["sound"], s["t"], s["volume"]) for s in item["sounds"]] == [("boom.wav", 300.5, 2.0)]
+    many = sequences.clean(_project(), {"items": [{"event_id": "b", "effects": [{"t": 300, "type": "flash"}] * 30}]},
+                           SETTINGS)
+    assert len(many["items"][0]["effects"]) == sequences.MAX_MARKERS
+
+
+def test_effects_run_before_captions():
+    cmd = media.build_export_cmd("in.mkv", "out.mp4", 0, 5, 2, frame={"info": {"width": 1920, "height": 1080},
+                                                                        "style": "focus45"}, subtitles="cap_1.ass",
+                                 effects=[{"t": 1.0, "type": "impact", "strength": 1.0}])
+    graph = cmd[cmd.index("-filter_complex") + 1]
+    assert graph.index("eq=brightness=") < graph.index("subtitles=")
+    assert "overlay=enable='between(t,1.000,1.400)'" in graph  # the shake only during its window
+    assert "scale=1080:1920" in graph and graph.endswith("[vfx]subtitles='cap_1.ass'[vs]")
+    wide = media.build_export_cmd("in.mkv", "out.mp4", 0, 5, 1, effects=[{"t": 2, "type": "zoom", "strength": 0.5}],
+                                  size=(2560, 1440), fps=60)
+    assert "zoompan=" in wide[wide.index("-filter_complex") + 1] and ":s=2560x1440:fps=60.000" in " ".join(wide)
+
+
+def test_sounds_mix_into_mixed_track_only():
+    cmd = media.build_export_cmd("in.mkv", "out.mp4", 10, 15, 2,
+                                 sounds=[{"t": 0.25, "path": "boom.wav", "volume": 1.5}, {"t": 3, "path": "b.mp3"}])
+    assert cmd.count("-i") == 3 and cmd[cmd.index("boom.wav") - 1] == "-i"
+    graph = cmd[cmd.index("-filter_complex") + 1]
+    assert "[1:a]adelay=250:all=1,volume=1.5[sfx0]" in graph and "[2:a]adelay=3000:all=1,volume=1[sfx1]" in graph
+    assert "[0:a:0][0:a:1][sfx0][sfx1]amix=inputs=4:duration=first" in graph
+    assert cmd.count("-filter_complex") == 1  # one graph: a second one crawls with split/overlay
+    maps = [cmd[i + 1] for i, a in enumerate(cmd) if a == "-map"]
+    assert maps == ["0:v:0", "[mix]", "0:a:0", "0:a:1"]  # Game and Mic stay clean
+    assert cmd[cmd.index("-t") + 1] == "5.000"
+    silent = media.build_export_cmd("in.mkv", "out.mp4", 0, 5, 0, sounds=[{"t": 1, "path": "boom.wav"}])
+    assert "anullsrc" in silent[silent.index("-filter_complex") + 1] and "-an" not in silent
 
 
 def test_prune_repoints_items_after_reanalysis():
@@ -145,12 +195,18 @@ def test_compiled_tiktok_render(tmp_path):
     cues = [captions.new_cue(1.2, 2.5, "what a save")]
     # Burning captions needs libass; some ffmpeg builds (e.g. Homebrew's) leave it out.
     burn = media.has_filter("subtitles")
+    boom = tmp_path / "boom.wav"
+    subprocess.run([media.tool("ffmpeg"), "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=60:duration=0.6",
+                    str(boom)], check=True)
+    effects = [{"t": 1.5, "type": t, "strength": 0.8} for t in ("impact", "zoom", "glitch", "bw")]
     parts = []
     for n, (a, b) in enumerate([(1.0, 3.0), (5.0, 6.5)]):
         ass = captions.write_ass(tmp_path / f"cap_{n}.ass", cues, a, b, media.VERTICAL_SIZE) if burn else None
         part = tmp_path / f"part_{n}.mp4"
         frame = {"info": info, "style": "focus45", "center_x": 0.5, "zoom": 1.0, "blur": 30.0}
-        media.export_clip(str(src), str(part), a, b, info, 0, 1, "x264", None, frame, ass)
+        # Effects and a sound on the first part; the second is outside their times.
+        media.export_clip(str(src), str(part), a, b, info, 0, 1, "x264", None, frame, ass, effects=effects,
+                          sounds=[{"t": 1.2, "path": boom, "volume": 1.0}])
         parts.append(part)
     out = tmp_path / "compiled.mp4"
     media.concat(parts, str(out), info["audio_streams"])

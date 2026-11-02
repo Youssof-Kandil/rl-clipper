@@ -1,16 +1,19 @@
 """YouTube and TikTok timelines: an ordered list of clips, each with its own trim.
 
 An item points at a detected event and keeps its own in/out (inside the event's
-window), and for TikTok its own 9:16 style and crop position.
+window), and for TikTok its own 9:16 style and crop position. Items also carry effect
+and sound markers, timed in source seconds like the trim so trimming never moves them.
 """
 
 from __future__ import annotations
 
 import uuid
 
-from . import media, store
+from . import media, sounds, store
 
 KINDS = ("youtube", "tiktok")
+EFFECTS = media.EFFECTS
+MAX_MARKERS = 20
 
 
 def empty(kind: str) -> dict:
@@ -23,7 +26,26 @@ def get(project: dict, kind: str) -> dict:
 
 def make_item(event: dict) -> dict:
     return {"id": uuid.uuid4().hex[:8], "event_id": event["id"], "start": event["start"],
-            "end": event["end"], "crop_x": event.get("crop_x", 0.5), "style": event.get("style")}
+            "end": event["end"], "crop_x": event.get("crop_x", 0.5), "style": event.get("style"),
+            "effects": [], "sounds": []}
+
+
+def _num(value: object, default: float, lo: float, hi: float) -> float:
+    try:
+        v = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        v = default
+    return round(min(max(v, lo), hi), 3)
+
+
+def _markers(raw: dict, lo: float, hi: float) -> tuple[list[dict], list[dict]]:
+    effects = [{"id": str(m.get("id") or uuid.uuid4().hex[:8]), "t": _num(m.get("t"), lo, lo, hi),
+                "type": m["type"], "strength": _num(m.get("strength"), 0.7, 0.2, 1.0)}
+               for m in raw.get("effects") or [] if isinstance(m, dict) and m.get("type") in EFFECTS]
+    found = [{"id": str(m.get("id") or uuid.uuid4().hex[:8]), "t": _num(m.get("t"), lo, lo, hi),
+              "sound": m["sound"], "volume": _num(m.get("volume"), 1.0, 0.0, 2.0)}
+             for m in raw.get("sounds") or [] if isinstance(m, dict) and sounds.path(str(m.get("sound") or ""))]
+    return effects[:MAX_MARKERS], found[:MAX_MARKERS]
 
 
 def clean(project: dict, seq: dict, settings: dict) -> dict:
@@ -39,10 +61,14 @@ def clean(project: dict, seq: dict, settings: dict) -> dict:
         start, end = store.clamp_clip(e, float(raw.get("start", e["start"])), float(raw.get("end", e["end"])),
                                       before, after, project["info"]["duration"])
         style = raw.get("style")
+        lo = max(e["time"] - before, 0.0)
+        hi = min(e["time"] + after, project["info"]["duration"] or e["time"] + after)
+        effects, found = _markers(raw, lo, hi)
         items.append({
             "id": str(raw.get("id") or uuid.uuid4().hex[:8]), "event_id": e["id"], "start": start, "end": end,
             "crop_x": round(min(max(float(raw.get("crop_x", 0.5)), 0.0), 1.0), 4),
             "style": style if style in media.VERTICAL_STYLES else None,
+            "effects": effects, "sounds": found,
         })
     out = {"items": items, "captions": bool(seq.get("captions", False))}
     name = media.file_name(str(seq.get("name") or ""))

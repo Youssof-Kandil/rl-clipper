@@ -135,28 +135,115 @@ def video_encoder_args(encoder: str = "auto", quality: str = "balanced") -> list
             *tag, "-pix_fmt", "yuv420p"]
 
 
-def audio_map_args(n_audio: int, game: int, mic: int, mixed_only: bool = False) -> list[str]:
+def audio_map_args(n_audio: int, game: int, mic: int, mixed_only: bool = False,
+                   sounds: list[tuple[int, float, float]] = ()) -> list[str]:
     """Build the audio part of an ffmpeg command.
 
     Two or more source tracks -> Mixed (game+mic), Game, Mic.
     One track -> that track only. None -> no audio.
+    ``sounds``: (input index, delay s, volume) sound effects mixed into Mixed (or the
+    only track); they never lengthen the clip, and Game / Mic stay clean.
     """
+    fx = "".join(f"[{k}:a]adelay={round(delay * 1000)}:all=1,volume={vol:g}[sfx{i}];"
+                 for i, (k, delay, vol) in enumerate(sounds))
+    fx_labels = "".join(f"[sfx{i}]" for i in range(len(sounds)))
+    enc = ["-c:a", "aac", "-b:a", "192k"]
     if n_audio == 0:
-        return ["-an"]
+        if not sounds:
+            return ["-an"]
+        # A silent bed as long as the clip (-t cuts it) so the sounds keep their timing.
+        mix = (f"{fx}anullsrc=r=48000:cl=stereo[bed];[bed]{fx_labels}amix=inputs={len(sounds) + 1}"
+               f":duration=first:normalize=0[mix]")
+        return ["-filter_complex", mix, "-map", "[mix]", *enc]
     if n_audio == 1:
-        return ["-map", "0:a:0", "-c:a", "aac", "-b:a", "192k"]
+        if not sounds:
+            return ["-map", "0:a:0", *enc]
+        mix = f"{fx}[0:a:0]{fx_labels}amix=inputs={len(sounds) + 1}:duration=first:normalize=0[mix]"
+        return ["-filter_complex", mix, "-map", "[mix]", *enc]
     game = min(max(game, 0), n_audio - 1)
     mic = min(max(mic, 0), n_audio - 1)
     if game == mic:
         mic = 1 if game == 0 else 0
-    mix = f"[0:a:{game}][0:a:{mic}]amix=inputs=2:duration=longest:normalize=0[mix]"
+    if sounds:
+        mix = f"{fx}[0:a:{game}][0:a:{mic}]{fx_labels}amix=inputs={len(sounds) + 2}:duration=first:normalize=0[mix]"
+    else:
+        mix = f"[0:a:{game}][0:a:{mic}]amix=inputs=2:duration=longest:normalize=0[mix]"
     args = ["-filter_complex", mix, "-map", "[mix]"]
     if not mixed_only:
         args += ["-map", f"0:a:{game}", "-map", f"0:a:{mic}"]
         # MP4 shows track names from handler_name; MKV-aware tools read title.
         for i, name in enumerate(("Mixed", "Game", "Mic")):
             args += [f"-metadata:s:a:{i}", f"title={name}", f"-metadata:s:a:{i}", f"handler_name={name}"]
-    return args + ["-c:a", "aac", "-b:a", "192k"]
+    return args + enc
+
+
+# ---------------------------------------------------------------- effects
+
+# Effect type -> how long it lasts (seconds) from its marker.
+EFFECTS = {"flash": 0.25, "shake": 0.4, "impact": 0.4, "zoom": 0.5, "glitch": 0.3, "bw": 0.6}
+
+
+def _window(a: float, d: float, var: str = "t") -> str:
+    return f"between({var},{a:.3f},{a + d:.3f})"
+
+
+def _fade(a: float, d: float, var: str = "t") -> str:
+    """1 at the marker, falling to 0 at its end (multiply by the window)."""
+    return f"(1-({var}-{a:.3f})/{d:g})"
+
+
+def effects_graph(effects: list[dict], size: tuple[int, int], fps: float, src: str, out: str) -> str:
+    """filter_complex segment applying effect markers to ``[src]``, giving ``[out]``.
+
+    ``effects``: [{t (seconds into the clip), type, strength 0.2-1}]. Expressions use
+    the frame time, so every filter runs over the whole clip and only acts in windows.
+    """
+    W, H = size
+    steps: list[str] = []
+    cur = src
+
+    def of(*types: str) -> list[tuple[float, float, str]]:
+        return [(float(e["t"]), float(e.get("strength", 0.7)), e["type"]) for e in effects if e["type"] in types]
+
+    if zooms := of("zoom"):
+        d = EFFECTS["zoom"]
+        # Punch in fast (0.08 s), ease back out; up to +18% at full strength.
+        z = "+".join(f"{_window(a, d, 'it')}*{0.18 * s:.3f}*min((it-{a:.3f})/0.08,1)*{_fade(a, d, 'it')}"
+                     for a, s, _ in zooms)
+        steps.append(f"[{cur}]zoompan=z='1+{z}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1"
+                     f":s={W}x{H}:fps={fps:.3f}[fxz]")
+        cur = "fxz"
+    if shakes := [(a, s * (0.35 if kind == "glitch" else 1.0), EFFECTS[kind])
+                  for a, s, kind in of("shake", "impact", "glitch")]:
+        # A copy cropped 6% smaller, swung round the middle and scaled back up, shown only
+        # during each shake so the rest of the clip isn't zoomed.
+        cw, ch = _even(W * 0.94), _even(H * 0.94)
+        mx, my = (W - cw) / 2, (H - ch) / 2
+
+        def swing(margin: float, wave: str) -> str:
+            amp = "+".join(f"{_window(a, d)}*{margin * s:.1f}*{_fade(a, d)}" for a, s, d in shakes)
+            return f"{margin:.1f}+({amp})*{wave}"
+        enable = "+".join(_window(a, d) for a, _, d in shakes)
+        steps.append(f"[{cur}]split=2[fxm][fxs];"
+                     f"[fxs]crop={cw}:{ch}:x='{swing(mx, 'sin(t*71)')}':y='{swing(my, 'cos(t*53)')}',"
+                     f"scale={W}:{H},setsar=1[fxk];"
+                     f"[fxm][fxk]overlay=enable='{enable}'[fxo]")
+        cur = "fxo"
+    chain = []
+    if flashes := of("flash", "impact"):
+        d = EFFECTS["flash"]
+        b = "+".join(f"{_window(a, d)}*{0.6 * s:.3f}*{_fade(a, d)}" for a, s, _ in flashes)
+        chain.append(f"eq=brightness='{b}':eval=frame")
+    for a, s, _ in of("glitch"):
+        q = 2 * round(4 + 6 * s)
+        chain.append(f"chromashift=cbh={q}:crh=-{q}:cbv=-{q // 2}:enable='{_window(a, EFFECTS['glitch'])}'")
+    if bws := of("bw"):
+        chain.append(f"hue=s=0:enable='{'+'.join(_window(a, EFFECTS['bw']) for a, _, _ in bws)}'")
+    if chain or not steps:
+        steps.append(f"[{cur}]{','.join(chain) or 'null'}[{out}]")
+    else:
+        steps[-1] = steps[-1][: -len(f"[{cur}]")] + f"[{out}]"
+    return ";".join(steps)
 
 
 # ---------------------------------------------------------------- vertical (9:16) framing
@@ -247,33 +334,55 @@ def vertical_filter(info: dict, style: str, center_x: float = 0.5, zoom: float =
 def build_export_cmd(src: str, out: str, start: float, end: float, n_audio: int,
                      game: int = 0, mic: int = 1, encoder: str = "auto",
                      frame: dict | None = None, subtitles: str | None = None,
-                     quality: str = "balanced") -> list[str]:
+                     quality: str = "balanced", effects: list[dict] | None = None,
+                     sounds: list[dict] | None = None, size: tuple[int, int] | None = None,
+                     fps: float = 30.0) -> list[str]:
     """``frame`` set → 9:16 output: {info, style, center_x, zoom, blur, mask}.
 
     ``subtitles``: an ASS file name to burn in. Pass a bare name and run ffmpeg from its
     folder: Windows drive letters would need escaping inside the filter.
+    ``effects`` / ``sounds``: markers timed in seconds into the clip; sounds as
+    {t, path, volume}. ``size`` / ``fps``: the source's, which effects need.
     """
     inputs = ["-ss", f"{start:.3f}", "-to", f"{end:.3f}", "-i", src]
+    n_inputs = 1
     video = ["-map", "0:v:0"]
     graph = ""
     if frame:
         mask_input = None
         if frame["style"] in MASKED_STYLES:
             inputs += ["-loop", "1", "-i", str(frame["mask"])]
-            mask_input = 1
+            mask_input = n_inputs
+            n_inputs += 1
         graph = vertical_filter(frame["info"], frame["style"], frame.get("center_x", 0.5),
                                 frame.get("zoom", 1.0), frame.get("blur", 30.0), mask_input)
+    label = "v" if graph else "0:v"
+    if effects:
+        out_size = VERTICAL_SIZE if frame else (size or (1920, 1080))
+        graph = (graph + ";" if graph else "") + effects_graph(effects, out_size, fps, label, "vfx")
+        label = "vfx"
     if subtitles:
-        graph = (graph + ";[v]" if graph else "[0:v]") + f"subtitles='{subtitles}'[vs]"
+        graph = (graph + ";" if graph else "") + f"[{label}]subtitles='{subtitles}'[vs]"
         video = ["-filter_complex", graph, "-map", "[vs]"]
     elif graph:
-        video = ["-filter_complex", graph, "-map", "[v]"]
+        video = ["-filter_complex", graph, "-map", f"[{label}]"]
+    sound_inputs = []
+    for snd in sounds or []:
+        inputs += ["-i", str(snd["path"])]
+        sound_inputs.append((n_inputs, max(float(snd["t"]), 0.0), float(snd.get("volume", 1.0))))
+        n_inputs += 1
+    audio = audio_map_args(n_audio, game, mic, sounds=sound_inputs)
+    if sound_inputs and len(video) == 4:
+        # One graph for both: with sound files in a second graph, ffmpeg crawls at a few
+        # fps whenever the video graph splits and overlays (shake).
+        video[1] += ";" + audio[1]
+        audio = audio[2:]
     return [
         tool("ffmpeg"), "-hide_banner", "-y", "-loglevel", "error", "-progress", "pipe:1", "-nostats",
-        *inputs, *video, *audio_map_args(n_audio, game, mic),
+        *inputs, *video, *audio,
         *video_encoder_args(encoder, quality),
-        # The looped mask is endless; stop at the clip's end.
-        *(["-t", f"{end - start:.3f}"] if frame else []),
+        # The looped mask and a silent sound bed are endless; stop at the clip's end.
+        *(["-t", f"{end - start:.3f}"] if frame or sound_inputs else []),
         "-movflags", "+faststart", out,
     ]
 
@@ -328,18 +437,28 @@ def render_proxy(src: str, out: str, info: dict, game: int, mic: int,
 
 def export_clip(src: str, out: str, start: float, end: float, info: dict, game: int, mic: int,
                 encoder: str = "auto", progress: ProgressCb | None = None,
-                frame: dict | None = None, subtitles: Path | None = None, quality: str = "balanced") -> None:
+                frame: dict | None = None, subtitles: Path | None = None, quality: str = "balanced",
+                effects: list[dict] | None = None, sounds: list[dict] | None = None) -> None:
+    """``effects`` / ``sounds``: markers timed in source seconds (sounds with a ``path``);
+    those outside the clip are skipped."""
     out = str(Path(out).resolve())
     sub_name = subtitles.name if subtitles else None
     cwd = subtitles.parent if subtitles else None
-    cmd = build_export_cmd(src, out, start, end, info["audio_streams"], game, mic, encoder, frame, sub_name, quality)
+
+    def inside(markers: list[dict] | None) -> list[dict]:
+        return [{**m, "t": float(m["t"]) - start} for m in markers or [] if start <= float(m["t"]) < end - 0.05]
+
+    extra = {"effects": inside(effects), "sounds": inside(sounds), "size": (info["width"], info["height"]),
+             "fps": info.get("fps") or 30.0}
+    cmd = build_export_cmd(src, out, start, end, info["audio_streams"], game, mic, encoder, frame, sub_name, quality,
+                           **extra)
     try:
         run_ffmpeg(cmd, end - start, progress, cwd)
     except MediaError:
         if encoder == "x264":
             raise
         cmd = build_export_cmd(src, out, start, end, info["audio_streams"], game, mic, "x264", frame, sub_name,
-                               quality)
+                               quality, **extra)
         run_ffmpeg(cmd, end - start, progress, cwd)
 
 

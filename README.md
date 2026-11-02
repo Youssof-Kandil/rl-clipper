@@ -54,6 +54,9 @@ Everything runs on your own computer. Nothing is uploaded anywhere.
   - A CapCut-style editor: drag clips to reorder them, and drag their edges to trim.
   - A live preview of the finished video in its real format.
   - Export **one compiled video** or **separate clips**.
+- **Effects and sound effects** on the timeline:
+  - Drop **flash, shake, impact, zoom punch, glitch** or **black & white** hits anywhere on a clip, plus one-click presets.
+  - Add sounds separately (bruh, boom, fart, gunshot…): search **Freesound** inside the app, or upload your own files.
 - **9:16 for TikTok, Shorts and Reels**, in four styles:
   - **4:5 in focus + blurred 9:16 behind** (the default)
   - **Crop + oval focus blur**
@@ -186,6 +189,7 @@ A different folder can be set in Settings. Matches without a saved replay still 
    - **Arrange:** drag clips on the timeline to reorder them, and drag their edges to trim. Each timeline keeps its own trims.
    - **TikTok only:** pick the 9:16 style and crop position per clip in the clip panel.
    - **Preview:** press **Play** to watch the whole video, cut to cut.
+   - **Effects & sounds:** in the clip panel, add an effect or a sound at the playhead (or a preset such as **Goal hit** = impact + boom). They show as ⚡ and ♪ markers under the timeline; drag them to move. See [Effects and sounds](#effects-and-sounds).
 5. **Captions (TikTok).**
    - Use **Transcribe all clips**, or **Transcribe this clip** for a single clip.
    - The first time you use a speech model it downloads automatically: base.en ~150 MB, small.en ~480 MB (default), medium.en ~1.5 GB, distil-large-v3.5 ~1.5 GB, large-v3-turbo ~1.6 GB, large-v3 ~3 GB. The large ones are the most accurate and want an NVIDIA GPU. Models are too large to ship in the repository; they're saved in `data/models`. **Caption look** shows which model is selected and has a **Download now** button to fetch it ahead of time.
@@ -194,6 +198,15 @@ A different folder can be set in Settings. Matches without a saved replay still 
 6. **Export:** **Export as one video** or **Export separate clips**.
    - The first export asks where files should go.
    - **Size:** Balanced (default), Best, or Small (HEVC).
+
+### Effects and sounds
+
+- **Effects:** flash, shake, impact (flash + shake), zoom punch, glitch, black & white. Each has a strength slider and plays in the preview just as it will export.
+- **Sounds** live in your library (`data/sounds`) and are mixed into the **Mixed** audio track only, so **Game** and **Mic** stay clean.
+  - **Find sounds online…** searches [Freesound](https://freesound.org) (600,000+ sounds). It needs a free API key: make a Freesound account, get a key at [freesound.org/apiv2/apply](https://freesound.org/apiv2/apply), and paste it in the sound browser or **Settings → Sound effects**.
+  - Results show their licence. **CC0** is free to use with no credit, and is listed first. **CC BY** needs a credit (author + link) in your video description; the library shows who to credit. **CC BY-NC** can't go in monetised videos.
+  - **Upload…** adds your own `.wav`, `.mp3`, `.ogg` or `.m4a` files (up to 15 s each).
+- No sounds ship with RL Clipper: the well-known meme sounds are copyrighted, so they can't be bundled in an open-source repository.
 
 ### Posting to YouTube and TikTok
 
@@ -297,6 +310,7 @@ Open **Settings** on a project. Everything is saved in `data/settings.json`.
 | Captions | Size, position, ALL CAPS | 78 / lower / off | Caption look. |
 | Captions | Highlight + colour | on, #2EA8FF | Colour the word being said. |
 | Captions | Max words per caption | 8 | Used by the next transcription. |
+| Sound effects | Freesound API key | empty | Lets you search Freesound for sounds in the app. Free at [freesound.org/apiv2/apply](https://freesound.org/apiv2/apply). |
 
 ## Troubleshooting
 
@@ -352,19 +366,20 @@ backend/
   app/main.py                 FastAPI app: REST API, background jobs, serves the built UI
   app/config.py               paths and settings (data/settings.json)
   app/store.py, jobs.py       project storage (data/projects/<id>/) and the job runner
-  app/media.py                ffprobe, preview proxy, export (framing, captions, encoders, concat)
+  app/media.py                ffprobe, preview proxy, export (framing, effects, sound mix, captions, encoders, concat)
   app/replays.py              find, download (rrrocket) and read Rocket League replays
   app/detect/                 frame sampler, OCR, tag classifier, scoreboard + clock reader, replay sync
-  app/sequences.py            YouTube / TikTok timelines
+  app/sequences.py            YouTube / TikTok timelines (clips, effect and sound markers)
+  app/sounds.py               sound effects library (data/sounds) and Freesound search
   app/captions.py             transcription, caption lines, ASS subtitles
   app/picker.py               native file / folder dialogs
   app/publish/                YouTube / TikTok posting: OAuth (your own app keys), uploads
   tests/                      pytest suite + fixtures
 frontend/src/
   components/                 Home, project tabs, clip list, editor, timelines, settings
-  render.ts                   canvas preview mirroring the export
+  render.ts, effects.ts       canvas preview mirroring the export (framing, captions, effects)
 docs/screenshots/             README images
-data/                         your projects, settings and models (created on first run, not in git)
+data/                         your projects, settings, models and sounds (created on first run, not in git)
 tools/                        rrrocket download (not in git)
 ```
 

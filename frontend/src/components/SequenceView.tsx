@@ -4,6 +4,7 @@ import {
   fmt,
   STYLE_LABEL,
   TYPE_LABEL,
+  EFFECT_LABEL,
   type ClipEvent,
   type Cue,
   type Project,
@@ -13,7 +14,9 @@ import {
   type Settings,
   type VerticalStyle,
 } from "../api";
+import { drawEffects, playSound } from "../effects";
 import { activeWord, drawCaption, drawFrame, type CaptionLook, type Look } from "../render";
+import EffectsPanel from "./EffectsPanel";
 import JobBar from "./JobBar";
 import PublishPanel from "./PublishPanel";
 
@@ -39,6 +42,8 @@ export const newItem = (e: ClipEvent): SeqItem => ({
   end: e.end,
   crop_x: e.crop_x ?? 0.5,
   style: e.style ?? null,
+  effects: [],
+  sounds: [],
 });
 
 const newCue = (start: number, end: number, text: string): Cue => ({
@@ -95,6 +100,8 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
   const videoB = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const play = useRef({ active: 0, idx: 0, playing: false });
+  // Where sound markers were last checked (clip index, source time): those passed since play.
+  const heard = useRef({ idx: -1, t: 0 });
   const live = useRef({ items, offsets, captions, showCaptions, settings, captionLook });
   live.current = { items, offsets, captions, showCaptions, settings, captionLook };
   const videos = () => [videoA.current!, videoB.current!];
@@ -180,6 +187,15 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
         const ctx = canvas.current?.getContext("2d");
         if (ctx && item) {
           drawFrame(ctx, cur, lookFor(item));
+          drawEffects(ctx, item.effects, cur.currentTime);
+          const h = heard.current;
+          const now = cur.currentTime;
+          if (p.playing) {
+            const from = h.idx === p.idx ? h.t : item.start - 0.01;
+            // A big jump is a seek, not playback: don't fire everything in between.
+            if (now > from && now - from < 0.5) for (const m of item.sounds ?? []) if (m.t > from && m.t <= now) playSound(m);
+          }
+          heard.current = { idx: p.idx, t: now };
           if (caps) {
             const t = cur.currentTime;
             const cue = cues.find((c) => c.start <= t && t < c.end && c.end > item.start && c.start < item.end);
@@ -475,6 +491,19 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
                 </div>
               )}
 
+              <EffectsPanel
+                item={selected}
+                playhead={items[play.current.idx]?.id === selected.id ? playheadSource() : null}
+                settings={settings}
+                onSettings={onSettings}
+                onPatch={(patch) => patchItem(selected.id, patch)}
+                onSeek={(t) => {
+                  const idx = items.findIndex((i) => i.id === selected.id);
+                  if (idx >= 0) seekTo(offsets[idx] + t - selected.start);
+                }}
+                onError={onError}
+              />
+
               {showCaptions && (
                 <div className="seq-captions">
                   <div className="row spread">
@@ -722,7 +751,16 @@ interface TrackProps {
   onItems: (items: SeqItem[]) => void;
 }
 
-type Drag = { mode: "move" | "in" | "out" | "seek"; id: string; x: number; moved: boolean; start: number; end: number };
+type Drag = {
+  mode: "move" | "in" | "out" | "seek" | "marker";
+  id: string;
+  x: number;
+  moved: boolean;
+  start: number;
+  end: number;
+  /** mode "marker": which marker, and its time when the drag began. */
+  marker?: { list: "effects" | "sounds"; id: string; t: number };
+};
 
 function Track({ items, offsets, total, time, events, selectedId, cues, thumb, window: win, onSelect, onSeek, onItems }: TrackProps) {
   const [pps, setPps] = useState(40); // pixels per second
@@ -760,6 +798,13 @@ function Track({ items, offsets, total, time, events, selectedId, cues, thumb, w
         if (to !== idx) onItems([...others.slice(0, to), item, ...others.slice(to)]);
         return;
       }
+      if (drag.mode === "marker" && drag.marker) {
+        const { list, id, t } = drag.marker;
+        const nt = round(Math.min(Math.max(t + dx / scale, item.start), item.end - 0.05));
+        const moved = (item[list] ?? []).map((m) => (m.id === id ? { ...m, t: nt } : m));
+        onItems(its.map((i) => (i.id === drag.id ? { ...i, [list]: moved } : i)));
+        return;
+      }
       const e = events.get(item.event_id)!;
       const [lo, hi] = win(e);
       const next =
@@ -770,6 +815,10 @@ function Track({ items, offsets, total, time, events, selectedId, cues, thumb, w
     };
     const up = () => {
       if (drag.mode === "move" && !drag.moved) onSelect(drag.id);
+      if (drag.mode === "marker" && !drag.moved && drag.marker) {
+        const k = latest.current.items.findIndex((i) => i.id === drag.id);
+        if (k >= 0) onSeek(latest.current.offsets[k] + drag.marker.t - latest.current.items[k].start + 0.01);
+      }
       setDrag(null);
     };
     window.addEventListener("pointermove", move);
@@ -790,7 +839,7 @@ function Track({ items, offsets, total, time, events, selectedId, cues, thumb, w
     <section className="card seq-track">
       <div className="row spread">
         <h3>
-          Timeline <span className="muted">· drag clips to reorder, drag their edges to trim</span>
+          Timeline <span className="muted">· drag clips to reorder, drag their edges to trim, drag ⚡/♪ markers to move them</span>
         </h3>
         <label className="zoom">
           Zoom
@@ -854,6 +903,31 @@ function Track({ items, offsets, total, time, events, selectedId, cues, thumb, w
               );
             })}
           </div>
+          {items.some((i) => i.effects?.length || i.sounds?.length) && (
+            <div className="markers-row">
+              {items.flatMap((item, k) =>
+                (["effects", "sounds"] as const).flatMap((list) =>
+                  (item[list] ?? [])
+                    .filter((m) => m.t >= item.start && m.t < item.end)
+                    .map((m) => (
+                      <span
+                        key={`${item.id}-${m.id}`}
+                        className={`seq-marker ${list}`}
+                        style={{ left: 12 + (offsets[k] + m.t - item.start) * pps }}
+                        title={"type" in m ? EFFECT_LABEL[m.type] : m.sound}
+                        onPointerDown={(ev) => {
+                          ev.preventDefault();
+                          onSelect(item.id);
+                          setDrag({ mode: "marker", id: item.id, x: ev.clientX, moved: false, start: item.start, end: item.end, marker: { list, id: m.id, t: m.t } });
+                        }}
+                      >
+                        {list === "effects" ? "⚡" : "♪"}
+                      </span>
+                    )),
+                ),
+              )}
+            </div>
+          )}
           {cues.length > 0 && (
             <div className="caps-row">
               {items.flatMap((item, k) =>

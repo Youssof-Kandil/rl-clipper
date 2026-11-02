@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import captions, jobs, media, picker, replays, sequences, store
+from . import captions, jobs, media, picker, replays, sequences, sounds, store
 from .publish import accounts, tiktok, youtube
 from .publish.accounts import PublishError
 from .config import DATA_DIR, FRONTEND_DIST, UPLOADS_DIR, ensure_dirs, load_settings, save_settings
@@ -251,11 +251,12 @@ def start_sequence_export(pid: str, kind: str, mode: str) -> jobs.Job:
                     name = f"{stem}_{kind}_{n:02d}_{e['type']}_{media.mmss(e['time'])}.mp4"
                     target = _unique(out_dir / name)
                 length = item["end"] - item["start"]
+                sfx = [{**m, "path": f} for m in item.get("sounds", []) if (f := sounds.path(m["sound"]))]
                 media.export_clip(project["source"], str(target), item["start"], item["end"], project["info"],
                                   settings["game_track"], settings["mic_track"], settings["encoder"],
                                   lambda p: job.update((done_secs + p * length) / total * 0.97,
                                                        f"Rendering clip {n}/{len(items)}"),
-                                  frame, subs, settings["export_quality"])
+                                  frame, subs, settings["export_quality"], item.get("effects"), sfx)
                 done_secs += length
                 if mode == "compiled":
                     parts.append(target)
@@ -689,6 +690,60 @@ def export_sequence(pid: str, kind: str, body: SequenceExportIn) -> dict:
     if body.mode not in ("compiled", "separate"):
         raise HTTPException(400, "Unknown export mode")
     return start_sequence_export(pid, _kind(kind), body.mode).to_dict()
+
+
+@app.get("/api/sounds")
+def list_sounds() -> list[dict]:
+    return sounds.list_sounds()
+
+
+@app.post("/api/sounds")
+def add_sound(file: UploadFile = File(...)) -> dict:
+    try:
+        return sounds.add(file.filename or "", file.file)
+    except (sounds.SoundError, media.MediaError) as exc:
+        raise HTTPException(400, str(exc)) from None
+
+
+@app.get("/api/sounds/search")
+def search_sounds(q: str, page: int = 1) -> dict:
+    try:
+        return sounds.search(load_settings(), q, page)
+    except sounds.SoundError as exc:
+        raise HTTPException(400, str(exc)) from None
+    except httpx.HTTPError:
+        raise HTTPException(502, "Couldn't reach Freesound; check your internet connection") from None
+
+
+class FreesoundIn(BaseModel):
+    id: int
+
+
+@app.post("/api/sounds/freesound")
+def add_freesound_sound(body: FreesoundIn) -> dict:
+    try:
+        return sounds.add_freesound(load_settings(), body.id)
+    except (sounds.SoundError, media.MediaError) as exc:
+        raise HTTPException(400, str(exc)) from None
+    except httpx.HTTPError:
+        raise HTTPException(502, "Couldn't reach Freesound; check your internet connection") from None
+
+
+@app.get("/api/sounds/{name}")
+def get_sound(name: str) -> FileResponse:
+    p = sounds.path(name)
+    if p is None:
+        raise HTTPException(404, "No such sound")
+    return FileResponse(p)
+
+
+@app.delete("/api/sounds/{name}")
+def delete_sound(name: str) -> dict:
+    try:
+        sounds.remove(name)
+    except sounds.SoundError as exc:
+        raise HTTPException(400, str(exc)) from None
+    return {"ok": True}
 
 
 @app.put("/api/projects/{pid}/captions")
