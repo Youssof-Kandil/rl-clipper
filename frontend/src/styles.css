@@ -105,6 +105,12 @@ label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--t
 .project { padding: 14px 20px 30px; display: flex; flex-direction: column; gap: 12px; max-width: 1600px; width: 100%; margin: 0 auto; }
 .project-head { display: flex; align-items: center; gap: 12px; }
 .project-head h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-name { cursor: text; border-radius: 6px; padding: 0 4px; margin-left: -4px; }
+.project-name:hover { background: var(--panel-2, rgba(127,127,127,.12)); }
+.rename-hint { font-size: 14px; opacity: .45; font-weight: 400; }
+.project-name:hover .rename-hint { opacity: .9; }
+.project-name-edit { font-size: 20px; font-weight: 650; width: min(100%, 520px); }
+.project-name-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .jobbar { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
 .export .jobbar { margin-top: 10px; background: var(--panel-2); }
 .jobbar-text { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
@@ -327,6 +333,8 @@ fieldset.yt-related .hint { margin: 0; }
 .block { position: absolute; top: 0; height: 64px; border-radius: 6px; overflow: hidden; background: var(--panel-2); border: 2px solid var(--line); cursor: grab; touch-action: none; user-select: none; }
 .block img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.55; pointer-events: none; }
 .block.active { border-color: var(--accent); }
+.block.picked { border-color: #ff5d5d; box-shadow: inset 0 0 0 2px rgba(255, 93, 93, .45); }
+.block.picked::after { content: "✓"; position: absolute; top: 2px; right: 4px; font-size: 12px; font-weight: 700; color: #fff; background: #ff5d5d; border-radius: 4px; padding: 0 4px; }
 .block.dragging { cursor: grabbing; opacity: 0.85; z-index: 2; box-shadow: 0 6px 18px #0008; }
 .block.t-goal { border-bottom: 4px solid var(--goal); }
 .block.t-save { border-bottom: 4px solid var(--save); }
@@ -389,3 +397,5 @@ legend { font-size: 12px; padding: 0 4px; display: flex; align-items: center; ga
 .fs-license { font-size: 11px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
 .fs-license.free { color: var(--manual); border-color: #8ee36b66; }
 .small-print { font-size: 12px; margin: 0; }
+button.danger { background: #c93c3c; border-color: #c93c3c; color: #fff; }
+button.danger:hover { background: #e04848; }

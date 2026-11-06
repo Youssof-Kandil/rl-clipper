@@ -224,7 +224,14 @@ export default function ProjectView({ id, tab, onTab, onClose }: Props) {
           ← Back
         </button>
         <div className="grow">
-          <h1 title={project.source}>{project.name}</h1>
+          <ProjectName
+            name={project.name}
+            source={project.source}
+            onRename={async (name) => {
+              const renamed = await api.renameProject(project.id, name);
+              setProject((p) => p && { ...p, name: renamed.name });
+            }}
+          />
           <span className="muted">
             {fmt(project.info.duration)} · {project.info.width}×{project.info.height} @ {Math.round(project.info.fps)}fps ·{" "}
             {project.info.audio_streams} audio track{project.info.audio_streams === 1 ? "" : "s"}
@@ -384,5 +391,43 @@ export default function ProjectView({ id, tab, onTab, onClose }: Props) {
         />
       )}
     </main>
+  );
+}
+
+/** The project's name in the header; click (or ✎) to rename it at any point in the flow. */
+function ProjectName({ name, source, onRename }: { name: string; source: string; onRename: (name: string) => Promise<void> }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const save = async () => {
+    const next = (draft ?? "").trim();
+    setDraft(null);
+    if (next && next !== name) {
+      try {
+        await onRename(next);
+      } catch (e) {
+        alert((e as Error).message);
+      }
+    }
+  };
+  if (draft !== null)
+    return (
+      <input
+        className="project-name-edit"
+        autoFocus
+        maxLength={80}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onFocus={(e) => e.target.select()}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") setDraft(null);
+        }}
+      />
+    );
+  return (
+    <h1 className="project-name" title={`${source}
+Click to rename`} onClick={() => setDraft(name)}>
+      {name} <span className="rename-hint">✎</span>
+    </h1>
   );
 }

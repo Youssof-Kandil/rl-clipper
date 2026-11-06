@@ -312,16 +312,17 @@ async function call<T>(method: string, url: string, body?: unknown): Promise<T> 
 export const api = {
   health: () => call<Health>("GET", "/api/health"),
   projects: () => call<ProjectSummary[]>("GET", "/api/projects"),
-  openPath: (path: string) => call<Project>("POST", "/api/projects", { path }),
+  openPath: (path: string, name = "") => call<Project>("POST", "/api/projects", { path, name }),
   /** Opens the native file dialog on the machine running the server. */
   pickFile: () => call<{ path: string | null }>("POST", "/api/pick-file"),
   /** Native folder dialog (for the export folder). */
   pickFolder: () => call<{ path: string | null }>("POST", "/api/pick-folder"),
-  upload: (file: File, onProgress: (p: number) => void) =>
+  upload: (file: File, onProgress: (p: number) => void, name = "") =>
     new Promise<Project>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const form = new FormData();
       form.append("file", file);
+      form.append("name", name);
       xhr.open("POST", "/api/projects/upload");
       xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
       xhr.onload = () =>
@@ -330,6 +331,7 @@ export const api = {
       xhr.send(form);
     }),
   project: (id: string) => call<Project>("GET", `/api/projects/${id}`),
+  renameProject: (id: string, name: string) => call<Project>("PATCH", `/api/projects/${id}`, { name }),
   deleteProject: (id: string) => call("DELETE", `/api/projects/${id}`),
   reanalyze: (id: string) => call<Project>("POST", `/api/projects/${id}/analyze`),
   patchEvent: (id: string, eid: string, patch: EventPatch) =>

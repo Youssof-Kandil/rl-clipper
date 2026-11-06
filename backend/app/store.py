@@ -25,7 +25,15 @@ def _file(pid: str) -> Path:
     return project_dir(pid) / "project.json"
 
 
-def create(source: str, info: dict) -> dict:
+MAX_NAME = 80
+
+
+def clean_name(name: str | None) -> str:
+    """A project's display name: one line, trimmed, at most MAX_NAME characters."""
+    return " ".join((name or "").split())[:MAX_NAME].strip()
+
+
+def create(source: str, info: dict, name: str = "") -> dict:
     ensure_dirs()
     pid = uuid.uuid4().hex[:10]
     d = project_dir(pid)
@@ -33,7 +41,7 @@ def create(source: str, info: dict) -> dict:
     (d / "exports").mkdir()
     project = {
         "id": pid,
-        "name": Path(source).stem,
+        "name": clean_name(name) or Path(source).stem,
         "source": source,
         "created": time.time(),
         "info": info,
@@ -70,6 +78,13 @@ def mutate(pid: str, fn) -> dict:
         project = get(pid)
         fn(project)
         return save(project)
+
+
+def rename(pid: str, name: str) -> dict:
+    name = clean_name(name)
+    if not name:
+        raise ValueError("Give the project a name")
+    return mutate(pid, lambda p: p.update(name=name))
 
 
 def list_all() -> list[dict]:

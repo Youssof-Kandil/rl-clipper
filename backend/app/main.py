@@ -17,7 +17,7 @@ from pathlib import Path
 import cv2
 import httpx
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -361,12 +361,12 @@ def start_export(pid: str, ids: list[str] | None) -> jobs.Job:
     return job
 
 
-def _open_project(source: str) -> dict:
+def _open_project(source: str, name: str = "") -> dict:
     try:
         info = media.probe(source)
     except media.MediaError as exc:
         raise HTTPException(400, str(exc)) from None
-    project = store.create(source, info)
+    project = store.create(source, info, name)
     start_proxy(project["id"])
     start_analysis(project["id"])
     return _with_jobs(store.get(project["id"]))
@@ -376,6 +376,11 @@ def _open_project(source: str) -> dict:
 
 class PathIn(BaseModel):
     path: str
+    name: str = ""  # empty = the file name
+
+
+class RenameIn(BaseModel):
+    name: str
 
 
 class EventPatch(BaseModel):
@@ -483,7 +488,7 @@ def create_project(body: PathIn) -> dict:
     path = body.path.strip().strip('"')
     if not os.path.isfile(path):
         raise HTTPException(400, f"File not found: {path}")
-    return _open_project(os.path.abspath(path))
+    return _open_project(os.path.abspath(path), body.name)
 
 
 @app.post("/api/pick-file")
@@ -505,17 +510,26 @@ def pick_folder() -> dict:
 
 
 @app.post("/api/projects/upload")
-def upload_project(file: UploadFile = File(...)) -> dict:
+def upload_project(file: UploadFile = File(...), name: str = Form("")) -> dict:
     name = media.safe_name(Path(file.filename or "video").stem) + Path(file.filename or ".mp4").suffix.lower()
     target = UPLOADS_DIR / f"{uuid.uuid4().hex[:6]}_{name}"
     with target.open("wb") as fh:
         shutil.copyfileobj(file.file, fh, length=8 * 1024 * 1024)
-    return _open_project(str(target))
+    return _open_project(str(target), name or Path(file.filename or "video").stem)
 
 
 @app.get("/api/projects/{pid}")
 def get_project(pid: str) -> dict:
     return _with_jobs(_project(pid))
+
+
+@app.patch("/api/projects/{pid}")
+def rename_project(pid: str, body: RenameIn) -> dict:
+    _project(pid)
+    try:
+        return _with_jobs(store.rename(pid, body.name))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from None
 
 
 @app.delete("/api/projects/{pid}")

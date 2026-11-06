@@ -44,3 +44,20 @@ def test_health_reports_capabilities():
     data = TestClient(main.app).get("/api/health").json()
     for key in ("ok", "ffmpeg", "nvenc", "captions_gpu", "caption_model_ready", "rrrocket", "demos_dir", "picker"):
         assert key in data
+
+
+def test_projects_can_be_named_and_renamed(tmp_path, monkeypatch):
+    from app import store
+
+    monkeypatch.setattr(store, "PROJECTS_DIR", tmp_path)
+    p = store.create(str(tmp_path / "2026-11-06 20-14-03.mkv"), {"duration": 10})
+    assert p["name"] == "2026-11-06 20-14-03"  # no name given: the file name
+    named = store.create(str(tmp_path / "x.mkv"), {"duration": 10}, "  Ranked\n 2v2   night ")
+    assert named["name"] == "Ranked 2v2 night"
+
+    client = TestClient(main.app)
+    r = client.patch(f"/api/projects/{p['id']}", json={"name": "Tuesday comeback"})
+    assert r.status_code == 200 and r.json()["name"] == "Tuesday comeback"
+    assert store.get(p["id"])["name"] == "Tuesday comeback"
+    assert client.patch(f"/api/projects/{p['id']}", json={"name": "   "}).status_code == 400
+    assert client.patch("/api/projects/nope", json={"name": "x"}).status_code == 404

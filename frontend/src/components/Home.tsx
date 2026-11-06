@@ -28,6 +28,7 @@ interface HomeProps {
 
 export default function Home({ onOpen, health, onSettings }: HomeProps) {
   const [path, setPath] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -44,7 +45,7 @@ export default function Home({ onOpen, health, onSettings }: HomeProps) {
     setError("");
     setBusy("Opening…");
     try {
-      onOpen((await api.openPath(target)).id);
+      onOpen((await api.openPath(target, name)).id);
     } catch (e) {
       setError(String((e as Error).message));
     } finally {
@@ -73,7 +74,7 @@ export default function Home({ onOpen, health, onSettings }: HomeProps) {
     setError("");
     setBusy("Uploading 0%");
     try {
-      const p = await api.upload(file, (x) => setBusy(`Uploading ${Math.round(x * 100)}%`));
+      const p = await api.upload(file, (x) => setBusy(`Uploading ${Math.round(x * 100)}%`), name);
       onOpen(p.id);
     } catch (e) {
       setError(String((e as Error).message));
@@ -96,6 +97,16 @@ export default function Home({ onOpen, health, onSettings }: HomeProps) {
           Point at an OBS recording (.mkv / .mp4). It gets scanned for point tags and scoreboard changes, and a
           preview copy is made for the editor. The original file is never modified.
         </p>
+        <label className="project-name-field">
+          Name (so you remember which recording this is)
+          <input
+            placeholder="e.g. Ranked 2v2 Tuesday night (empty = the file name)"
+            value={name}
+            maxLength={80}
+            onChange={(e) => setName(e.target.value)}
+            disabled={!!busy}
+          />
+        </label>
         <div className="row">
           {health?.picker !== false && (
             <button className="primary" onClick={pickFile} disabled={!!busy}>

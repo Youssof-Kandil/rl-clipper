@@ -71,6 +71,9 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
   const total = items.reduce((s, i) => s + len(i), 0);
   const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id ?? null);
   const selected = items.find((i) => i.id === selectedId) ?? null;
+  // Clips picked for bulk removal: Ctrl+click toggles one, Shift+click picks a range.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const pickedIds = items.filter((i) => picked.has(i.id)).map((i) => i.id);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [model, setModel] = useState<{ model: string; ready: boolean; size: string } | null>(null);
@@ -91,7 +94,26 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
   const setItems = (next: SeqItem[]) => onSeq((s) => ({ ...s, items: next }));
   const editItems = (fn: (items: SeqItem[]) => SeqItem[]) => onSeq((s) => ({ ...s, items: fn(s.items) }));
   const patchItem = (id: string, patch: Partial<SeqItem>) => editItems((its) => its.map((i) => (i.id === id ? { ...i, ...patch } : i)));
-  const removeItem = (id: string) => editItems((its) => its.filter((i) => i.id !== id));
+  // Timelines before each removal, newest last, so Ctrl+Z can bring clips back.
+  const undoStack = useRef<SeqItem[][]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const removeItems = (ids: string[]) => {
+    if (!ids.length) return;
+    undoStack.current = [...undoStack.current.slice(-29), seq.items];
+    setCanUndo(true);
+    editItems((its) => its.filter((i) => !ids.includes(i.id)));
+    setPicked(new Set());
+  };
+  const removeItem = (id: string) => removeItems([id]);
+  const undo = () => {
+    const prev = undoStack.current.pop();
+    if (!prev) return;
+    setCanUndo(undoStack.current.length > 0);
+    setItems(prev);
+  };
+  const clearTimeline = () => {
+    if (items.length && confirm(`Remove all ${items.length} clips from this timeline? (Ctrl+Z brings them back)`)) removeItems(items.map((i) => i.id));
+  };
 
   // ---------------------------------------------------------------- player
   // Two videos take turns: while one plays an item, the other waits on the next item's
@@ -221,18 +243,40 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
   // Space toggles playback.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const el = e.target as HTMLElement;
+      // Sliders and checkboxes keep focus after a click; only typing fields own the keys.
+      const typing = el.tagName === "TEXTAREA" || el.tagName === "SELECT" || (el instanceof HTMLInputElement && !["range", "checkbox"].includes(el.type));
+      if (typing || el.isContentEditable) return;
       if (e.key === " ") {
         e.preventDefault();
         play.current.playing ? pause() : start();
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        removeItems(pickedIds.length ? pickedIds : selectedId ? [selectedId] : []);
+      } else if (e.key.toLowerCase() === "z" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        undo();
+      } else if (e.key === "Escape") {
+        setPicked(new Set());
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const selectAndSeek = (id: string) => {
+  const selectAndSeek = (id: string, mods?: { ctrl: boolean; shift: boolean }) => {
+    if (mods?.shift && selectedId) {
+      const [a, b] = [items.findIndex((i) => i.id === selectedId), items.findIndex((i) => i.id === id)].sort((x, y) => x - y);
+      setPicked(new Set(items.slice(a, b + 1).map((i) => i.id)));
+      return; // keep the anchor where it was
+    }
+    if (mods?.ctrl) {
+      setPicked((prev) => {
+        const next = new Set(prev.size ? prev : selectedId ? [selectedId] : []);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+    } else setPicked(new Set());
     setSelectedId(id);
     const idx = items.findIndex((i) => i.id === id);
     if (idx >= 0 && !(time >= offsets[idx] && time < offsets[idx] + len(items[idx]))) seekTo(offsets[idx]);
@@ -381,6 +425,20 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
             </span>
             {tiktok && total > 180 && <span className="warn">over 3 min</span>}
             {tiktok && total > 60 && total <= 180 && <span className="muted">over 60 s</span>}
+            <span className="grow" />
+            {pickedIds.length > 1 && (
+              <button className="small danger" onClick={() => removeItems(pickedIds)} title="Delete key">
+                Remove {pickedIds.length} clips
+              </button>
+            )}
+            {canUndo && (
+              <button className="ghost small" onClick={undo} title="Ctrl+Z">
+                ↶ Undo
+              </button>
+            )}
+            <button className="ghost small" onClick={clearTimeline} disabled={!items.length}>
+              Clear timeline
+            </button>
           </div>
         </section>
 
@@ -692,6 +750,7 @@ export default function SequenceView({ project, kind, seq, captions, settings, o
         time={time}
         events={events}
         selectedId={selectedId}
+        picked={picked}
         cues={showCaptions ? captions : []}
         thumb={(e) => (e.thumb ? `/api/projects/${project.id}/thumbs/${e.thumb}` : null)}
         window={(e) => [Math.max(e.time - pre, 0), Math.min(e.time + post, project.info.duration)]}
@@ -742,11 +801,12 @@ interface TrackProps {
   time: number;
   events: Map<string, ClipEvent>;
   selectedId: string | null;
+  picked: Set<string>;
   cues: Cue[];
   thumb: (e: ClipEvent) => string | null;
   /** The furthest an item may be trimmed out to (its event's window). */
   window: (e: ClipEvent) => [number, number];
-  onSelect: (id: string) => void;
+  onSelect: (id: string, mods?: { ctrl: boolean; shift: boolean }) => void;
   onSeek: (t: number) => void;
   onItems: (items: SeqItem[]) => void;
 }
@@ -760,9 +820,11 @@ type Drag = {
   end: number;
   /** mode "marker": which marker, and its time when the drag began. */
   marker?: { list: "effects" | "sounds"; id: string; t: number };
+  /** mode "move": modifier keys held, for Ctrl/Shift+click picking. */
+  mods?: { ctrl: boolean; shift: boolean };
 };
 
-function Track({ items, offsets, total, time, events, selectedId, cues, thumb, window: win, onSelect, onSeek, onItems }: TrackProps) {
+function Track({ items, offsets, total, time, events, selectedId, picked, cues, thumb, window: win, onSelect, onSeek, onItems }: TrackProps) {
   const [pps, setPps] = useState(40); // pixels per second
   const lane = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -814,7 +876,7 @@ function Track({ items, offsets, total, time, events, selectedId, cues, thumb, w
       onItems(its.map((i) => (i.id === drag.id ? { ...i, ...next } : i)));
     };
     const up = () => {
-      if (drag.mode === "move" && !drag.moved) onSelect(drag.id);
+      if (drag.mode === "move" && !drag.moved) onSelect(drag.id, drag.mods);
       if (drag.mode === "marker" && !drag.moved && drag.marker) {
         const k = latest.current.items.findIndex((i) => i.id === drag.id);
         if (k >= 0) onSeek(latest.current.offsets[k] + drag.marker.t - latest.current.items[k].start + 0.01);
@@ -839,7 +901,7 @@ function Track({ items, offsets, total, time, events, selectedId, cues, thumb, w
     <section className="card seq-track">
       <div className="row spread">
         <h3>
-          Timeline <span className="muted">· drag clips to reorder, drag their edges to trim, drag ⚡/♪ markers to move them</span>
+          Timeline <span className="muted">· Ctrl/Shift+click to pick several, Delete removes them, Ctrl+Z undoes · drag clips to reorder, drag their edges to trim, drag ⚡/♪ markers to move them</span>
         </h3>
         <label className="zoom">
           Zoom
@@ -868,10 +930,14 @@ function Track({ items, offsets, total, time, events, selectedId, cues, thumb, w
               return (
                 <div
                   key={item.id}
-                  className={`block t-${e.type} ${item.id === selectedId ? "active" : ""} ${drag?.id === item.id && drag.moved ? "dragging" : ""}`}
+                  className={`block t-${e.type} ${item.id === selectedId ? "active" : ""} ${picked.has(item.id) ? "picked" : ""} ${drag?.id === item.id && drag.moved ? "dragging" : ""}`}
                   style={{ left: 12 + offsets[k] * pps, width: Math.max(len(item) * pps - 2, 8) }}
                   onPointerDown={(ev) => {
                     ev.preventDefault();
+                    (document.activeElement as HTMLElement | null)?.blur(); // so Delete / Ctrl+Z reach the timeline
+                    const mods = { ctrl: ev.ctrlKey || ev.metaKey, shift: ev.shiftKey };
+                    // A Ctrl/Shift click only picks; it never drags the clip.
+                    if (mods.ctrl || mods.shift) return onSelect(item.id, mods);
                     setDrag({ mode: "move", id: item.id, x: ev.clientX, moved: false, start: item.start, end: item.end });
                   }}
                 >
