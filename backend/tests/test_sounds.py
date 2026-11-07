@@ -23,6 +23,7 @@ needs_ffmpeg = pytest.mark.skipif(not _ffmpeg_ok(), reason="ffmpeg not installed
 def library(tmp_path, monkeypatch):
     monkeypatch.setattr(sounds, "USER_DIR", tmp_path / "sounds")
     monkeypatch.setattr(sounds, "CREDITS", tmp_path / "sounds" / "credits.json")
+    monkeypatch.setattr(sounds, "LEVELLED", tmp_path / "sounds" / ".levelled.json")
     return tmp_path / "sounds"
 
 
@@ -118,3 +119,40 @@ def test_add_freesound_keeps_the_credit(library, tmp_path):
     assert sounds.list_sounds()[0]["credit"]["url"] == "https://freesound.org/s/7/"
     sounds.remove("bruh 7.mp3")
     assert json.loads((library / "credits.json").read_text()) == {}
+
+
+LOUD = "aevalsrc=0.98*sin(2*PI*300*t):d=1"  # a full-scale tone, like an over-mastered meme sound
+
+
+def test_gain_targets_average_and_caps_peaks_and_boost():
+    assert sounds.gain_for(-6.0, 0.0) == -14.0  # very loud: down to the target
+    assert sounds.gain_for(-25.0, -1.0) == -2.0  # spiky: peaks win
+    assert sounds.gain_for(-50.0, -40.0) == 12.0  # very quiet: lifted, but only so much
+
+
+@needs_ffmpeg
+@pytest.mark.parametrize("ext", ["wav", "mp3"])
+def test_loud_sounds_are_levelled_when_added(library, tmp_path, ext):
+    loud = tmp_path / f"loud.{ext}"
+    subprocess.run([media.tool("ffmpeg"), "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                    LOUD, str(loud)], check=True)
+    before, _ = sounds._levels(loud)
+    s = sounds.add(f"boom.{ext}", io.BytesIO(loud.read_bytes()))
+    mean, peak = sounds._levels(sounds.path(s["name"]))
+    assert before > -6 and abs(mean - sounds.TARGET_DB) < 1.5 and peak <= sounds.PEAK_DB + 0.5
+    assert s["seconds"] == pytest.approx(1, abs=0.1)
+
+
+@needs_ffmpeg
+def test_sounds_added_earlier_get_levelled_once(library, tmp_path, monkeypatch):
+    monkeypatch.setattr(sounds, "LEVELLED", library / ".levelled.json")
+    library.mkdir()
+    subprocess.run([media.tool("ffmpeg"), "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                    LOUD, str(library / "old.wav")], check=True)
+    assert sounds._levels(library / "old.wav")[0] > -10
+    assert [x["name"] for x in sounds.list_sounds()] == ["old.wav"]
+    assert abs(sounds._levels(library / "old.wav")[0] - sounds.TARGET_DB) < 1.5
+    calls = []
+    monkeypatch.setattr(sounds, "level", calls.append)
+    sounds.list_sounds()
+    assert calls == []  # already done

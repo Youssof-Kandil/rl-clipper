@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import shutil
 import subprocess
 import uuid
@@ -28,6 +29,12 @@ MAX_BYTES = 10 * 1024 * 1024
 MAX_SECONDS = 15.0
 FREESOUND = "https://freesound.org/apiv2"
 # Freesound licence name -> short label. Free-to-use (CC0) results are listed first.
+# Sounds are levelled when added so a meme clip can't blast over the game audio:
+# average level near TARGET_DB, peaks no higher than PEAK_DB, quiet ones lifted at most MAX_BOOST_DB.
+TARGET_DB = -20.0
+PEAK_DB = -3.0
+MAX_BOOST_DB = 12.0
+LEVELLED = USER_DIR / ".levelled.json"
 LICENSES = {"Creative Commons 0": "CC0", "Attribution": "CC BY", "Attribution NonCommercial": "CC BY-NC"}
 
 _seconds: dict[tuple[str, float], float] = {}
@@ -57,9 +64,67 @@ def seconds(path: Path) -> float:
     return _seconds[key]
 
 
+def _levels(p: Path) -> tuple[float, float]:
+    """(mean, peak) volume of a file in dBFS."""
+    out = subprocess.run([media.tool("ffmpeg"), "-hide_banner", "-nostats", "-i", str(p), "-af", "volumedetect",
+                          "-f", "null", "-"], capture_output=True, text=True, creationflags=media._NO_WINDOW)
+    mean = re.search(r"mean_volume: (-?[\d.]+|-inf) dB", out.stderr)
+    peak = re.search(r"max_volume: (-?[\d.]+|-inf) dB", out.stderr)
+    if out.returncode or not mean or not peak or "inf" in mean[1] + peak[1]:
+        raise SoundError("Couldn't measure that sound's volume")
+    return float(mean[1]), float(peak[1])
+
+
+def gain_for(mean: float, peak: float) -> float:
+    """dB to apply so the sound sits near TARGET_DB without peaks over PEAK_DB."""
+    return round(min(TARGET_DB - mean, PEAK_DB - peak, MAX_BOOST_DB), 1)
+
+
+def level(p: Path) -> None:
+    """Even out a sound's loudness in place. Leaves the file as it was if ffmpeg can't."""
+    try:
+        gain = gain_for(*_levels(p))
+    except (SoundError, media.MediaError):
+        return
+    if abs(gain) < 1:
+        return
+    tmp = p.with_name(f".level_{uuid.uuid4().hex[:8]}{p.suffix}")
+    try:
+        out = subprocess.run([media.tool("ffmpeg"), "-hide_banner", "-loglevel", "error", "-y", "-i", str(p), "-vn",
+                              "-af", f"volume={gain}dB", *(["-q:a", "2"] if p.suffix.lower() == ".mp3" else []), str(tmp)],
+                             capture_output=True, creationflags=media._NO_WINDOW)
+        if out.returncode == 0 and tmp.stat().st_size > 0:
+            tmp.replace(p)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _level_old_sounds() -> None:
+    """Sounds added before levelling existed get levelled once."""
+    try:
+        done = set(json.loads(LEVELLED.read_text("utf-8")))
+    except (OSError, json.JSONDecodeError):
+        done = set()
+    todo = [p for p in USER_DIR.iterdir() if p.suffix.lower() in EXTS and not p.name.startswith(".") and p.name not in done]
+    for p in todo:
+        level(p)
+        done.add(p.name)
+    if todo:
+        LEVELLED.write_text(json.dumps(sorted(done)), "utf-8")
+
+
+def _mark_levelled(name: str) -> None:
+    try:
+        done = set(json.loads(LEVELLED.read_text("utf-8")))
+    except (OSError, json.JSONDecodeError):
+        done = set()
+    LEVELLED.write_text(json.dumps(sorted(done | {name})), "utf-8")
+
+
 def list_sounds() -> list[dict]:
     if not USER_DIR.is_dir():
         return []
+    _level_old_sounds()
     credits = _credits()
     out = []
     for p in sorted(USER_DIR.iterdir(), key=lambda p: p.name.lower()):
@@ -98,10 +163,12 @@ def add(filename: str, data: BinaryIO, credit: dict | None = None) -> dict:
         length = seconds(tmp)
         if length > MAX_SECONDS:
             raise SoundError(f"Sound effects can be up to {MAX_SECONDS:.0f} seconds (this one is {length:.0f} s)")
+        level(tmp)
         target, n = USER_DIR / f"{stem}{ext}", 2
         while target.exists():
             target, n = USER_DIR / f"{stem} {n}{ext}", n + 1
         shutil.move(str(tmp), target)
+        _mark_levelled(target.name)
     finally:
         tmp.unlink(missing_ok=True)
     if credit:

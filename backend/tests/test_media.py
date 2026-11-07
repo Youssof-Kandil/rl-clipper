@@ -108,3 +108,24 @@ def test_clamp_clip_window():
     assert store.clamp_clip({"time": 5.0}, -10, 12, 10, 10, 600) == (0.0, 12.0)
     assert store.clamp_clip(ev, 35, 35, 10, 10, 600) == (35.0, 35.5)
     assert store.clamp_clip({"time": 595.0}, 590, 700, 10, 10, 600) == (590.0, 600.0)
+
+
+def test_proxy_runs_on_the_gpu_and_steps_down_when_it_fails(monkeypatch, tmp_path):
+    cuda = media.build_proxy_cmd("in.mkv", "out.mp4", 2, encoder="cuda")
+    assert cuda[cuda.index("-hwaccel") + 1] == "cuda" and cuda.index("-hwaccel") < cuda.index("-i")
+    assert "scale_cuda=-2:720:format=yuv420p" in cuda and "h264_nvenc" in cuda
+    cpu = media.build_proxy_cmd("in.mkv", "out.mp4", 2, encoder="x264")
+    assert "-hwaccel" not in cpu and "scale=-2:720" in cpu and "libx264" in cpu
+
+    tried = []
+
+    def fake_run(cmd, duration, progress=None, cwd=None):
+        tried.append("cuda" if "-hwaccel" in cmd else "nvenc" if "h264_nvenc" in cmd else "x264")
+        if tried[-1] != "x264":
+            raise media.MediaError("no")
+        Path(cmd[-1]).write_bytes(b"ok")
+
+    monkeypatch.setattr(media, "nvenc_available", lambda: True)
+    monkeypatch.setattr(media, "run_ffmpeg", fake_run)
+    media.render_proxy("in.mkv", str(tmp_path / "p.mp4"), {"audio_streams": 2, "duration": 1}, 0, 1)
+    assert tried == ["cuda", "nvenc", "x264"] and (tmp_path / "p.mp4").read_bytes() == b"ok"

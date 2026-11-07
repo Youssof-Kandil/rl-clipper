@@ -389,14 +389,20 @@ def build_export_cmd(src: str, out: str, start: float, end: float, n_audio: int,
 
 def build_proxy_cmd(src: str, out: str, n_audio: int, game: int = 0, mic: int = 1,
                     encoder: str = "auto") -> list[str]:
+    """``encoder``: "cuda" decodes, scales and encodes on the NVIDIA GPU (fastest, and leaves
+    the CPU to the analysis running alongside); "nvenc" decodes on the CPU; "x264" is all CPU."""
     if encoder == "auto":
-        encoder = "nvenc" if nvenc_available() else "x264"
-    venc = (["-c:v", "h264_nvenc", "-preset", "p3", "-cq", "28", "-b:v", "0"] if encoder == "nvenc"
+        encoder = "cuda" if nvenc_available() else "x264"
+    decode, scale = ["-i", src], ["-vf", "scale=-2:720", "-pix_fmt", "yuv420p"]
+    if encoder == "cuda":
+        decode = ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", src]
+        scale = ["-vf", "scale_cuda=-2:720:format=yuv420p"]
+    venc = (["-c:v", "h264_nvenc", "-preset", "p1", "-cq", "28", "-b:v", "0"] if encoder in ("cuda", "nvenc")
             else ["-c:v", "libx264", "-preset", "veryfast", "-crf", "28"])
     return [
         tool("ffmpeg"), "-hide_banner", "-y", "-loglevel", "error", "-progress", "pipe:1", "-nostats",
-        "-i", src, "-map", "0:v:0", *audio_map_args(n_audio, game, mic, mixed_only=True),
-        "-vf", "scale=-2:720", "-pix_fmt", "yuv420p", *venc,
+        *decode, "-map", "0:v:0", *audio_map_args(n_audio, game, mic, mixed_only=True),
+        *scale, *venc,
         # Keyframe every second keeps scrubbing in the browser snappy.
         "-g", "60", "-movflags", "+faststart", out,
     ]
@@ -425,13 +431,15 @@ def run_ffmpeg(cmd: list[str], duration: float, progress: ProgressCb | None = No
 def render_proxy(src: str, out: str, info: dict, game: int, mic: int,
                  progress: ProgressCb | None = None) -> None:
     tmp = out + ".part.mp4"
-    cmd = build_proxy_cmd(src, tmp, info["audio_streams"], game, mic)
-    try:
-        run_ffmpeg(cmd, info["duration"], progress)
-    except MediaError:
-        # NVENC can fail on odd inputs; retry on CPU once.
-        cmd = build_proxy_cmd(src, tmp, info["audio_streams"], game, mic, encoder="x264")
-        run_ffmpeg(cmd, info["duration"], progress)
+    # The GPU path can fail on odd inputs (or a codec the decoder lacks): step down to CPU decoding, then all-CPU.
+    tries = ["cuda", "nvenc", "x264"] if nvenc_available() else ["x264"]
+    for i, encoder in enumerate(tries):
+        try:
+            run_ffmpeg(build_proxy_cmd(src, tmp, info["audio_streams"], game, mic, encoder), info["duration"], progress)
+            break
+        except MediaError:
+            if i == len(tries) - 1:
+                raise
     os.replace(tmp, out)
 
 

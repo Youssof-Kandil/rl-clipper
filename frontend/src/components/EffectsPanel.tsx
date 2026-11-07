@@ -248,6 +248,7 @@ function SoundBrowser({ initial, library, settings, onSettings, onError, onClose
   const listen = (src: string) => {
     audio.current?.pause();
     audio.current = new Audio(src);
+    audio.current.volume = 0.35; // Freesound's previews aren't levelled yet (added sounds are), and many are mastered very loud
     audio.current.play().catch(() => {});
   };
   useEffect(() => () => audio.current?.pause(), []);
